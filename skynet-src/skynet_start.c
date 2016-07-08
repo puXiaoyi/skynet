@@ -60,11 +60,13 @@ wakeup(struct monitor *m, int busy) {
 	}
 }
 
+// socket线程入口函数
 static void *
 thread_socket(void *p) {
 	struct monitor * m = p;
 	skynet_initthread(THREAD_SOCKET);
 	for (;;) {
+		//socket事件循环
 		int r = skynet_socket_poll();
 		if (r==0)
 			break;
@@ -90,6 +92,7 @@ free_monitor(struct monitor *m) {
 	skynet_free(m);
 }
 
+// 监视器线程入口函数
 static void *
 thread_monitor(void *p) {
 	struct monitor * m = p;
@@ -98,6 +101,7 @@ thread_monitor(void *p) {
 	skynet_initthread(THREAD_MONITOR);
 	for (;;) {
 		CHECK_ABORT
+		// 检测每一个monitor
 		for (i=0;i<n;i++) {
 			skynet_monitor_check(m->m[i]);
 		}
@@ -125,11 +129,13 @@ signal_hup() {
 	}
 }
 
+//定时器线程入口函数
 static void *
 thread_timer(void *p) {
 	struct monitor * m = p;
 	skynet_initthread(THREAD_TIMER);
 	for (;;) {
+		// 更新时间
 		skynet_updatetime();
 		CHECK_ABORT
 		wakeup(m,m->count-1);
@@ -149,6 +155,7 @@ thread_timer(void *p) {
 	return NULL;
 }
 
+// 工作线程入口函数
 static void *
 thread_worker(void *p) {
 	struct worker_parm *wp = p;
@@ -159,6 +166,7 @@ thread_worker(void *p) {
 	skynet_initthread(THREAD_WORKER);
 	struct message_queue * q = NULL;
 	while (!m->quit) {
+		// 消息分发函数
 		q = skynet_context_message_dispatch(sm, q, weight);
 		if (q == NULL) {
 			if (pthread_mutex_lock(&m->mutex) == 0) {
@@ -178,10 +186,13 @@ thread_worker(void *p) {
 	return NULL;
 }
 
+// 启动线程
 static void
 start(int thread) {
+	//thread个工作线程，另外3个分别为monitor timer socket 线程各一个
 	pthread_t pid[thread+3];
 
+	//为每个工作线程，创建一个skynet_monitor
 	struct monitor *m = skynet_malloc(sizeof(*m));
 	memset(m, 0, sizeof(*m));
 	m->count = thread;
@@ -192,15 +203,18 @@ start(int thread) {
 	for (i=0;i<thread;i++) {
 		m->m[i] = skynet_monitor_new();
 	}
+	// 创建互斥锁
 	if (pthread_mutex_init(&m->mutex, NULL)) {
 		fprintf(stderr, "Init mutex error");
 		exit(1);
 	}
+	// 创建条件锁
 	if (pthread_cond_init(&m->cond, NULL)) {
 		fprintf(stderr, "Init cond error");
 		exit(1);
 	}
 
+	//创建monitor timer socket 线程
 	create_thread(&pid[0], thread_monitor, m);
 	create_thread(&pid[1], thread_timer, m);
 	create_thread(&pid[2], thread_socket, m);
@@ -211,6 +225,7 @@ start(int thread) {
 		2, 2, 2, 2, 2, 2, 2, 2, 
 		3, 3, 3, 3, 3, 3, 3, 3, };
 	struct worker_parm wp[thread];
+	// 创建工作线程
 	for (i=0;i<thread;i++) {
 		wp[i].m = m;
 		wp[i].id = i;
@@ -229,12 +244,14 @@ start(int thread) {
 	free_monitor(m);
 }
 
+// 引导程序
 static void
 bootstrap(struct skynet_context * logger, const char * cmdline) {
 	int sz = strlen(cmdline);
 	char name[sz+1];
 	char args[sz+1];
 	sscanf(cmdline, "%s %s", name, args);
+	// snlua bootstrap ， snlua服务加载运行了bootstrap.lua代码
 	struct skynet_context *ctx = skynet_context_new(name, args);
 	if (ctx == NULL) {
 		skynet_error(NULL, "Bootstrap error : %s\n", cmdline);
@@ -252,26 +269,36 @@ skynet_start(struct skynet_config * config) {
 	sigfillset(&sa.sa_mask);
 	sigaction(SIGHUP, &sa, NULL);
 
+	// 如果守护进程配置，初始化守护进程
 	if (config->daemon) {
 		if (daemon_init(config->daemon)) {
 			exit(1);
 		}
 	}
+	// 初始化skynet_harbor
 	skynet_harbor_init(config->harbor);
+	// 初始化skynet_handle
 	skynet_handle_init(config->harbor);
+	// 初始化skynet_mq
 	skynet_mq_init();
+	// 初始化skynet_module(gate,snlua,log,harbor)
 	skynet_module_init(config->module_path);
+	// 初始化skynet_timer
 	skynet_timer_init();
+	// 初始化skynet_socket
 	skynet_socket_init();
 
+	// 启动log服务
 	struct skynet_context *ctx = skynet_context_new(config->logservice, config->logger);
 	if (ctx == NULL) {
 		fprintf(stderr, "Can't launch %s service\n", config->logservice);
 		exit(1);
 	}
 
+	// 引导程序，一般为 snlua bootstrap
 	bootstrap(ctx, config->bootstrap);
 
+	// 启动线程
 	start(config->thread);
 
 	// harbor_exit may call socket send, so it should exit before socket_free

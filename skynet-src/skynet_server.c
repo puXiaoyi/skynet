@@ -39,58 +39,66 @@
 
 #endif
 
+// skynet上下文的基本结构
 struct skynet_context {
-	void * instance;
-	struct skynet_module * mod;
-	void * cb_ud;
-	skynet_cb cb;
-	struct message_queue *queue;
-	FILE * logfile;
-	char result[32];
-	uint32_t handle;
-	int session_id;
-	int ref;
-	bool init;
-	bool endless;
+	void * instance;		//skynet_module实例，通过skynet_module_instance_create创建
+	struct skynet_module * mod;	//skynet_module实体，封装了create init release signal四个基本方法
+	void * cb_ud;			//回调的上下文，比如 gate logger snlua harbor lua_State NULL 等
+	skynet_cb cb;			//回调函数，typedef int (*skynet_cb)(struct skynet_context * context, void *ud, int type, int session, uint32_t source , const void * msg, size_t sz);
+	struct message_queue *queue;	//消息队列
+	FILE * logfile;			//日志指针
+	char result[32];		//skynet_command 指令操作结果缓冲区
+	uint32_t handle;		//唯一句柄，通过skynet_handle_register分配
+	int session_id;			//会话id
+	int ref;			//引用计数，初始为2
+	bool init;			//初始化成功标识，初始为false，skynet_module_instance_init返回0时赋值为true
+	bool endless;			//无限循环标识，monitor检测到版本长期未变化时赋值为true
 
 	CHECKCALLING_DECL
 };
 
 struct skynet_node {
-	int total;
-	int init;
+	int total;			//成功创建的skynet_context总数
+	int init;			//是否初始化设置了线程私有变量handle值
 	uint32_t monitor_exit;
-	pthread_key_t handle_key;
+	pthread_key_t handle_key; 	//通过pthread_getpecific和pthread_setspecific实现同一个线程中不同函数间共享数据
 };
 
+// skynet_node实例，通过skynet_globalinit初始化
 static struct skynet_node G_NODE;
 
+// 创建的skynet_context总数
 int 
 skynet_context_total() {
 	return G_NODE.total;
 }
 
+// 创建的skynet_context总数原子递增
 static void
 context_inc() {
 	ATOM_INC(&G_NODE.total);
 }
 
+// 创建的skynet_context总数原子递减
 static void
 context_dec() {
 	ATOM_DEC(&G_NODE.total);
 }
 
+// 通过获取线程私有变量得到当前线程中skynet_context的handle值
 uint32_t 
 skynet_current_handle(void) {
 	if (G_NODE.init) {
 		void * handle = pthread_getspecific(G_NODE.handle_key);
 		return (uint32_t)(uintptr_t)handle;
 	} else {
+		// ?
 		uint32_t v = (uint32_t)(-THREAD_MAIN);
 		return v;
 	}
 }
 
+// 格式化十进制数字为十六进制字符串
 static void
 id_to_hex(char * str, uint32_t id) {
 	int i;
@@ -116,19 +124,25 @@ drop_message(struct skynet_message *msg, void *ud) {
 	skynet_send(NULL, source, msg->source, PTYPE_ERROR, 0, NULL, 0);
 }
 
+// 创建一个skynet_context
 struct skynet_context * 
 skynet_context_new(const char * name, const char *param) {
+	// 查询name对应的skynet_module实体
 	struct skynet_module * mod = skynet_module_query(name);
 
 	if (mod == NULL)
 		return NULL;
 
+	// 创建一个skynet_module实例
 	void *inst = skynet_module_instance_create(mod);
 	if (inst == NULL)
 		return NULL;
+	// 分配内存空间，创建新的skynet_context
 	struct skynet_context * ctx = skynet_malloc(sizeof(*ctx));
+	// 初始化回旋锁
 	CHECKCALLING_INIT(ctx)
 
+	// 初始化变量
 	ctx->mod = mod;
 	ctx->instance = inst;
 	ctx->ref = 2;
@@ -140,20 +154,28 @@ skynet_context_new(const char * name, const char *param) {
 	ctx->init = false;
 	ctx->endless = false;
 	// Should set to 0 first to avoid skynet_handle_retireall get an uninitialized handle
-	ctx->handle = 0;	
+	ctx->handle = 0;
+	// 分配一个新的唯一的句柄	
 	ctx->handle = skynet_handle_register(ctx);
+	// 创建一个新的消息队列
 	struct message_queue * queue = ctx->queue = skynet_mq_create(ctx->handle);
 	// init function maybe use ctx->handle, so it must init at last
+	// 创建的skynet_context总数原子递增
 	context_inc();
 
+	// 加锁
 	CHECKCALLING_BEGIN(ctx)
+	// 初始化skynet_module实例
 	int r = skynet_module_instance_init(mod, inst, ctx, param);
+	// 解锁
 	CHECKCALLING_END(ctx)
 	if (r == 0) {
+		// 初始化skynet_module成功，释放一个引用并修改初始化标识
 		struct skynet_context * ret = skynet_context_release(ctx);
 		if (ret) {
 			ctx->init = true;
 		}
+		// 把消息队列加入全局消息队列
 		skynet_globalmq_push(queue);
 		if (ret) {
 			skynet_error(ret, "LAUNCH %s %s", name, param ? param : "");
@@ -181,6 +203,7 @@ skynet_context_newsession(struct skynet_context *ctx) {
 	return session;
 }
 
+// 每获取一次skynet_context，引用计数递增一次
 void 
 skynet_context_grab(struct skynet_context *ctx) {
 	ATOM_INC(&ctx->ref);
@@ -194,8 +217,10 @@ skynet_context_reserve(struct skynet_context *ctx) {
 	context_dec();
 }
 
+// 销毁skynet_context
 static void 
 delete_context(struct skynet_context *ctx) {
+	// 关闭文件，释放内存，销毁回旋锁
 	if (ctx->logfile) {
 		fclose(ctx->logfile);
 	}
@@ -206,6 +231,7 @@ delete_context(struct skynet_context *ctx) {
 	context_dec();
 }
 
+// 释放一个引用，当引用数为零时销毁skynet_context
 struct skynet_context * 
 skynet_context_release(struct skynet_context *ctx) {
 	if (ATOM_DEC(&ctx->ref) == 0) {
@@ -215,6 +241,7 @@ skynet_context_release(struct skynet_context *ctx) {
 	return ctx;
 }
 
+// 往skynet_context压入一条skynet_message
 int
 skynet_context_push(uint32_t handle, struct skynet_message *message) {
 	struct skynet_context * ctx = skynet_handle_grab(handle);
@@ -227,6 +254,7 @@ skynet_context_push(uint32_t handle, struct skynet_message *message) {
 	return 0;
 }
 
+// 设置skynet_context的endless标识为true
 void 
 skynet_context_endless(uint32_t handle) {
 	struct skynet_context * ctx = skynet_handle_grab(handle);
@@ -246,22 +274,32 @@ skynet_isremote(struct skynet_context * ctx, uint32_t handle, int * harbor) {
 	return ret;
 }
 
+// 消息分发
 static void
 dispatch_message(struct skynet_context *ctx, struct skynet_message *msg) {
+	// skynet_context必须已成功初始化
 	assert(ctx->init);
+	// 加锁
 	CHECKCALLING_BEGIN(ctx)
+	// 通过获取线程私有变量得到skynet_context的handle值
 	pthread_setspecific(G_NODE.handle_key, (void *)(uintptr_t)(ctx->handle));
+	// msg.sz 分离出type和sz，高8位为type
 	int type = msg->sz >> MESSAGE_TYPE_SHIFT;
 	size_t sz = msg->sz & MESSAGE_TYPE_MASK;
+	// 日志输出
 	if (ctx->logfile) {
 		skynet_log_output(ctx->logfile, msg->source, type, msg->session, msg->data, sz);
 	}
+	// 执行回调函数
 	if (!ctx->cb(ctx, ctx->cb_ud, type, msg->session, msg->source, msg->data, sz)) {
+		// 返回0执行成功，由接收方释放消息数据内存空间
 		skynet_free(msg->data);
 	} 
+	// 解锁
 	CHECKCALLING_END(ctx)
 }
 
+// bootstrap 中调用，bootstrap启动失败的时候分发logger消息
 void 
 skynet_context_dispatchall(struct skynet_context * ctx) {
 	// for skynet_error
@@ -272,16 +310,20 @@ skynet_context_dispatchall(struct skynet_context * ctx) {
 	}
 }
 
+// thread_worker 工作线程中被循环调用，进行消息分发
 struct message_queue * 
 skynet_context_message_dispatch(struct skynet_monitor *sm, struct message_queue *q, int weight) {
 	if (q == NULL) {
+		// 如果队列为空，重新从全局队列中弹出一个
 		q = skynet_globalmq_pop();
 		if (q==NULL)
 			return NULL;
 	}
 
+	// 通过message_queue找到关联的handle
 	uint32_t handle = skynet_mq_handle(q);
 
+	// 通过handle找到所属的skynet_context
 	struct skynet_context * ctx = skynet_handle_grab(handle);
 	if (ctx == NULL) {
 		struct drop_t d = { handle };
