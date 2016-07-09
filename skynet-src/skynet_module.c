@@ -13,14 +13,15 @@
 #define MAX_MODULE_TYPE 32
 
 struct modules {
-	int count;
-	struct spinlock lock;
-	const char * path;
-	struct skynet_module m[MAX_MODULE_TYPE];
+	int count;				// 数量
+	struct spinlock lock;			// 回旋锁
+	const char * path;			// 路径
+	struct skynet_module m[MAX_MODULE_TYPE];// 集合
 };
 
 static struct modules * M = NULL;
 
+// 打开module的so文件，返回动态库指针
 static void *
 _try_open(struct modules *m, const char * name) {
 	const char *l;
@@ -62,6 +63,7 @@ _try_open(struct modules *m, const char * name) {
 	return dl;
 }
 
+// 通过name查询skynet_module实例
 static struct skynet_module * 
 _query(const char * name) {
 	int i;
@@ -73,6 +75,7 @@ _query(const char * name) {
 	return NULL;
 }
 
+// 初始化skynet_module实例，找到方法名在动态库中的地址并赋值给skynet_module实例中的变量
 static int
 _open_sym(struct skynet_module *mod) {
 	size_t name_size = strlen(mod->name);
@@ -90,6 +93,8 @@ _open_sym(struct skynet_module *mod) {
 	return mod->init == NULL;
 }
 
+// 通过name查询skynet_module实例
+// 如果实例为空，打开文件创建实例并初始化
 struct skynet_module * 
 skynet_module_query(const char * name) {
 	struct skynet_module * result = _query(name);
@@ -133,9 +138,12 @@ skynet_module_insert(struct skynet_module *mod) {
 	SPIN_UNLOCK(M)
 }
 
+// 创建具体的模块实例
+// 比如 snlua gate harbor logger
 void * 
 skynet_module_instance_create(struct skynet_module *m) {
 	if (m->create) {
+		// 调用具体模块的_create方法
 		return m->create();
 	} else {
 		return (void *)(intptr_t)(~0);
@@ -161,6 +169,7 @@ skynet_module_instance_signal(struct skynet_module *m, void *inst, int signal) {
 	}
 }
 
+// 初始化M实例，在skynet_start中调用
 void 
 skynet_module_init(const char *path) {
 	struct modules *m = skynet_malloc(sizeof(*m));

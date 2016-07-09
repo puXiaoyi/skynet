@@ -25,33 +25,39 @@ typedef void (*timer_execute_func)(void *ud,void *arg);
 #define TIME_NEAR_MASK (TIME_NEAR-1)
 #define TIME_LEVEL_MASK (TIME_LEVEL-1)
 
+// 定时器事件结构
 struct timer_event {
 	uint32_t handle;
 	int session;
 };
 
+// 定时器节点结构
 struct timer_node {
 	struct timer_node *next;
 	uint32_t expire;
 };
 
+// 定时器链表
+// 为什么一个用指针，一个不用？
 struct link_list {
 	struct timer_node head;
 	struct timer_node *tail;
 };
 
+// 定时器结构
 struct timer {
-	struct link_list near[TIME_NEAR];
-	struct link_list t[4][TIME_LEVEL];
-	struct spinlock lock;
-	uint32_t time;
-	uint32_t starttime;
+	struct link_list near[TIME_NEAR];	// 
+	struct link_list t[4][TIME_LEVEL];	// 
+	struct spinlock lock;			// 回旋锁
+	uint32_t time;				// 
+	uint32_t starttime;		
 	uint64_t current;
 	uint64_t current_point;
 };
 
 static struct timer * TI = NULL;
 
+// 清空link_list
 static inline struct timer_node *
 link_clear(struct link_list *list) {
 	struct timer_node * ret = list->head.next;
@@ -61,6 +67,7 @@ link_clear(struct link_list *list) {
 	return ret;
 }
 
+// 链接一个定时器节点
 static inline void
 link(struct link_list *list,struct timer_node *node) {
 	list->tail->next = node;
@@ -68,6 +75,7 @@ link(struct link_list *list,struct timer_node *node) {
 	node->next=0;
 }
 
+//
 static void
 add_node(struct timer *T,struct timer_node *node) {
 	uint32_t time=node->expire;
@@ -135,6 +143,7 @@ timer_shift(struct timer *T) {
 	}
 }
 
+// 分发定时器列表消息
 static inline void
 dispatch_list(struct timer_node *current) {
 	do {
@@ -144,7 +153,8 @@ dispatch_list(struct timer_node *current) {
 		message.session = event->session;
 		message.data = NULL;
 		message.sz = (size_t)PTYPE_RESPONSE << MESSAGE_TYPE_SHIFT;
-
+	
+		// 启动定时器的上下文会收到PTYPE_RESPONSE的一条消息
 		skynet_context_push(event->handle, &message);
 		
 		struct timer_node * temp = current;
@@ -153,6 +163,7 @@ dispatch_list(struct timer_node *current) {
 	} while (current);
 }
 
+// 运行定时器
 static inline void
 timer_execute(struct timer *T) {
 	int idx = T->time & TIME_NEAR_MASK;
