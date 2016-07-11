@@ -46,13 +46,13 @@ struct link_list {
 
 // 定时器结构
 struct timer {
-	struct link_list near[TIME_NEAR];	// 
-	struct link_list t[4][TIME_LEVEL];	// 
-	struct spinlock lock;			// 回旋锁
-	uint32_t time;				// 
-	uint32_t starttime;		
-	uint64_t current;
-	uint64_t current_point;
+	struct link_list near[TIME_NEAR];		// 临近时间节点 
+	struct link_list t[4][TIME_LEVEL];		// 
+	struct spinlock lock;				// 回旋锁
+	uint32_t time;					// 递增计数 
+	uint32_t starttime;				// 启动时的UTC时间秒数	
+	uint64_t current;				// 启动后的skynet单位时间数
+	uint64_t current_point;				// 当前时刻的skynet单位时间数
 };
 
 static struct timer * TI = NULL;
@@ -75,7 +75,7 @@ link(struct link_list *list,struct timer_node *node) {
 	node->next=0;
 }
 
-//
+// 
 static void
 add_node(struct timer *T,struct timer_node *node) {
 	uint32_t time=node->expire;
@@ -177,6 +177,7 @@ timer_execute(struct timer *T) {
 	}
 }
 
+// 定期器更新
 static void 
 timer_update(struct timer *T) {
 	SPIN_LOCK(T);
@@ -192,6 +193,7 @@ timer_update(struct timer *T) {
 	SPIN_UNLOCK(T);
 }
 
+// 创建一个定时器
 static struct timer *
 timer_create_timer() {
 	struct timer *r=(struct timer *)skynet_malloc(sizeof(struct timer));
@@ -239,14 +241,21 @@ skynet_timeout(uint32_t handle, int time, int session) {
 }
 
 // centisecond: 1/100 second
+// skynet单位时间为1/100秒
+// sec 当前时刻的UTC秒数
+// cs 秒数外剩余时间的skynet单位时间数，系统中作为 开始计时后的累计skynet单位时间数，运行过程中通过计算getime()差值保持增长
 static void
 systime(uint32_t *sec, uint32_t *cs) {
 #if !defined(__APPLE__)
+	// tv_sec 秒
+	// tv_nsec 纳秒 1/1000000000 秒
 	struct timespec ti;
 	clock_gettime(CLOCK_REALTIME, &ti);
 	*sec = (uint32_t)ti.tv_sec;
 	*cs = (uint32_t)(ti.tv_nsec / 10000000);
 #else
+	// tv_sec 秒
+	// tv_usec 微秒 1/100000 秒
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	*sec = tv.tv_sec;
@@ -254,6 +263,7 @@ systime(uint32_t *sec, uint32_t *cs) {
 #endif
 }
 
+// 当前时刻的UTC时间（以skynet单位时间为最小精度）
 static uint64_t
 gettime() {
 	uint64_t t;
@@ -271,6 +281,7 @@ gettime() {
 	return t;
 }
 
+// 时间更新主函数，在thread_timer中被定时器线程循环调用
 void
 skynet_updatetime(void) {
 	uint64_t cp = gettime();
@@ -280,19 +291,23 @@ skynet_updatetime(void) {
 	} else if (cp != TI->current_point) {
 		uint32_t diff = (uint32_t)(cp - TI->current_point);
 		TI->current_point = cp;
+		// 根据gettime校正current表示的运行累计skynet单位时间数
 		TI->current += diff;
 		int i;
 		for (i=0;i<diff;i++) {
+			// 每个skynet单位时间都执行定时器更新逻辑
 			timer_update(TI);
 		}
 	}
 }
 
+// skynet系统启动时间，即启动时的UTC时间秒数
 uint32_t
 skynet_starttime(void) {
 	return TI->starttime;
 }
 
+// skynet系统当前时间，即启动后的skynet单位时间数
 uint64_t 
 skynet_now(void) {
 	return TI->current;
