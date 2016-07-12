@@ -19,17 +19,17 @@
 #define MAX_INFO 128
 // MAX_SOCKET will be 2^MAX_SOCKET_P
 #define MAX_SOCKET_P 16
-#define MAX_EVENT 64
-#define MIN_READ_BUFFER 64
-#define SOCKET_TYPE_INVALID 0
-#define SOCKET_TYPE_RESERVE 1
-#define SOCKET_TYPE_PLISTEN 2
-#define SOCKET_TYPE_LISTEN 3
-#define SOCKET_TYPE_CONNECTING 4
-#define SOCKET_TYPE_CONNECTED 5
-#define SOCKET_TYPE_HALFCLOSE 6
-#define SOCKET_TYPE_PACCEPT 7
-#define SOCKET_TYPE_BIND 8
+#define MAX_EVENT 64			// 事件循环最大事件数，sp_wait
+#define MIN_READ_BUFFER 64		// 默认读缓冲区最小长度，read
+#define SOCKET_TYPE_INVALID 0	// 默认初始无效套接字
+#define SOCKET_TYPE_RESERVE 1   // 保留套接字，系统已为其分配id与之对应
+#define SOCKET_TYPE_PLISTEN 2	// 监听套接字，但未加入事件循环管理
+#define SOCKET_TYPE_LISTEN 3	// 监听套接字，但已加入事件循环管理
+#define SOCKET_TYPE_CONNECTING 4// 非阻塞连接中套接字
+#define SOCKET_TYPE_CONNECTED 5 // 已连接套接字
+#define SOCKET_TYPE_HALFCLOSE 6 // 半关闭套接字
+#define SOCKET_TYPE_PACCEPT 7	// 被动连接套接字，accept后并未加入事件循环管理
+#define SOCKET_TYPE_BIND 8		// 绑定文件描述符，把stdin stdout 等加入事件循环管理
 
 #define MAX_SOCKET (1<<MAX_SOCKET_P)
 
@@ -68,22 +68,22 @@ struct write_buffer {
 
 // 写缓冲列表
 struct wb_list {
-	struct write_buffer * head;
-	struct write_buffer * tail;
+	struct write_buffer * head;					// 写缓冲区头指针
+	struct write_buffer * tail;					// 写缓冲区尾指针
 };
 
 // 套接字结构
 struct socket {
-	uintptr_t opaque;
-	struct wb_list high;
-	struct wb_list low;
-	int64_t wb_size;
-	int fd;
-	int id;
-	uint16_t protocol;
-	uint16_t type;
+	uintptr_t opaque;							// skynet服务的handle								
+	struct wb_list high;						// 高优先级写缓冲区链表
+	struct wb_list low;							// 低优先级写缓冲区链表
+	int64_t wb_size;							// 写缓冲区链表中数据大小，包括高低优先级
+	int fd;										// 套接字文件描述符
+	int id;										// skynet分配唯一id
+	uint16_t protocol;							// 协议类型 PROTOCOL_TCP PROTOCOL_UDP PROTOCOL_UDPv6
+	uint16_t type;								// 类型，默认为 SOCKET_TYPE_INVALID，分配后为 SOCKET_TYPE_RESERVE 等
 	union {
-		int size;
+		int size;								// tcp 读缓冲区大小，默认为 MIN_READ_BUFFER，动态变化
 		uint8_t udp_address[UDP_ADDRESS_SIZE];
 	} p;
 };
@@ -342,6 +342,7 @@ socket_server_create() {
 	return ss;
 }
 
+// 清空写缓冲区，并释放内存空间
 static void
 free_wb_list(struct socket_server *ss, struct wb_list *list) {
 	struct write_buffer *wb = list->head;
@@ -354,6 +355,7 @@ free_wb_list(struct socket_server *ss, struct wb_list *list) {
 	list->tail = NULL;
 }
 
+// 强制关闭
 static void
 force_close(struct socket_server *ss, struct socket *s, struct socket_message *result) {
 	result->id = s->id;
@@ -361,19 +363,25 @@ force_close(struct socket_server *ss, struct socket *s, struct socket_message *r
 	result->data = NULL;
 	result->opaque = s->opaque;
 	if (s->type == SOCKET_TYPE_INVALID) {
+		// 如果是初始类型则直接返回
 		return;
 	}
+	// 保留套接字不可被强制关闭
 	assert(s->type != SOCKET_TYPE_RESERVE);
+	// 清空写缓冲链表
 	free_wb_list(ss,&s->high);
 	free_wb_list(ss,&s->low);
 	if (s->type != SOCKET_TYPE_PACCEPT && s->type != SOCKET_TYPE_PLISTEN) {
+		// 已加入事件循环管理的套接字，从事件循环管理中移除
 		sp_del(ss->event_fd, s->fd);
 	}
 	if (s->type != SOCKET_TYPE_BIND) {
+		// 如果是正常socket套接字，执行close关闭套接字
 		if (close(s->fd) < 0) {
 			perror("close socket:");
 		}
 	}
+	// 修改套接字为初始类型
 	s->type = SOCKET_TYPE_INVALID;
 }
 
@@ -433,6 +441,7 @@ new_fd(struct socket_server *ss, int id, int fd, int protocol, uintptr_t opaque,
 // return -1 when connecting
 // 打开套接字
 // 正常返回 SOCKET_OPEN
+// 其他返回 -1，包括 连接中 的情况
 static int
 open_socket(struct socket_server *ss, struct request_open * request, struct socket_message *result) {
 	int id = request->id;
@@ -472,6 +481,8 @@ open_socket(struct socket_server *ss, struct request_open * request, struct sock
 		// 连接套接字
 		status = connect( sock, ai_ptr->ai_addr, ai_ptr->ai_addrlen);
 		if ( status != 0 && errno != EINPROGRESS) {
+			// O_NONBLOCK is set for the file descriptor for the socket and the connection cannot be immediately established; the connection shall be established asynchronously.
+			// 当套接字被设置为非阻塞后，连接不会被立即建立，所以errno会返回EINPROGRESS
 			close(sock);
 			sock = -1;
 			continue;
@@ -504,8 +515,9 @@ open_socket(struct socket_server *ss, struct request_open * request, struct sock
 		freeaddrinfo( ai_list );
 		return SOCKET_OPEN;
 	} else {
-		// 正在连接中
+		// socket修改为连接中类型，在socket_server_poll方法中调用report_connect方法修改为SOCKET_TYPE_CONNECTED，并返回SOCKET_OPEN
 		ns->type = SOCKET_TYPE_CONNECTING;
+		// 打开事件循环中fd的可写权限
 		sp_write(ss->event_fd, ns->fd, ns, true);
 	}
 
@@ -879,7 +891,8 @@ close_socket(struct socket_server *ss, struct request_close *request, struct soc
 	return -1;
 }
 
-// 绑定套接字
+// 绑定其他类型的文件描述符，比如stdin和stdout
+// 创建socket实例并加入事件循环
 static int
 bind_socket(struct socket_server *ss, struct request_bind *request, struct socket_message *result) {
 	int id = request->id;
@@ -893,7 +906,6 @@ bind_socket(struct socket_server *ss, struct request_bind *request, struct socke
 	}
 	// 套接字设置为非阻塞
 	sp_nonblocking(request->fd);
-	// 修改socket为绑定类型
 	s->type = SOCKET_TYPE_BIND;
 	result->data = "binding";
 	return SOCKET_OPEN;
@@ -1290,7 +1302,7 @@ report_accept(struct socket_server *ss, struct socket *s, struct socket_message 
 	result->opaque = s->opaque;
 	result->id = s->id;			// 服务器套接字id
 	result->ud = id;			// 被动套接字id
-	result->data = NULL;			// 连接客户端ip地址
+	result->data = NULL;		// 连接客户端ip地址
 
 	void * sin_addr = (u.s.sa_family == AF_INET) ? (void*)&u.v4.sin_addr : (void *)&u.v6.sin6_addr;
 	int sin_port = ntohs((u.s.sa_family == AF_INET) ? u.v4.sin_port : u.v6.sin6_port);
