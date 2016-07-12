@@ -14,9 +14,13 @@
 struct socket_server;
 
 struct socket_message {
-	int id;
+	// 分配id
+	int id;	
+	// 服务handle
 	uintptr_t opaque;
+	// 数据size，accept时为被动套接字的id
 	int ud;	// for accept, ud is new connection id ; for data, ud is size of data 
+	// 数据
 	char * data;
 };
 

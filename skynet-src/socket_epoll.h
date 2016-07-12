@@ -15,16 +15,24 @@ sp_invalid(int efd) {
 	return efd == -1;
 }
 
+// 创建一个epoll实例，返回文件描述符
 static int
 sp_create() {
 	return epoll_create(1024);
 }
 
+// 关闭epoll文件描述符
 static void
 sp_release(int efd) {
 	close(efd);
 }
 
+// 把sock加入efd事件循环管理
+// 默认开启 EPOLLIN 可读权限
+// EPOLLIN，只有当对端有数据写入时才会触发，触发一次后需要不断读取所有数据直到读完EAGAIN为止，否则剩余的数据只有在下次对端有数据写入时才能读到。
+// EPOLLOUT，只有在连接时触发一次表示可写。其他时候想触发，必须满足以下两个条件:write写满缓冲区返回EAGAIN，对端读取数据后又可写了
+// EPOLLIN，要求读完所有数据，所以要求socket是异步
+// EPOLLOUT，只会在内核缓冲区不可写到可写的转变时刻，才会触发一次，所以叫边缘触发
 static int 
 sp_add(int efd, int sock, void *ud) {
 	struct epoll_event ev;
@@ -36,11 +44,13 @@ sp_add(int efd, int sock, void *ud) {
 	return 0;
 }
 
+// 把sock移出efd事件循环管理
 static void 
 sp_del(int efd, int sock) {
 	epoll_ctl(efd, EPOLL_CTL_DEL, sock , NULL);
 }
 
+// 修改sock在efd中的权限
 static void 
 sp_write(int efd, int sock, void *ud, bool enable) {
 	struct epoll_event ev;
@@ -49,6 +59,7 @@ sp_write(int efd, int sock, void *ud, bool enable) {
 	epoll_ctl(efd, EPOLL_CTL_MOD, sock, &ev);
 }
 
+// 等待就绪的事件列表
 static int 
 sp_wait(int efd, struct event *e, int max) {
 	struct epoll_event ev[max];
@@ -64,6 +75,7 @@ sp_wait(int efd, struct event *e, int max) {
 	return n;
 }
 
+// 设置fd为非阻塞文件描述符
 static void
 sp_nonblocking(int fd) {
 	int flag = fcntl(fd, F_GETFL, 0);

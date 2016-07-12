@@ -550,6 +550,8 @@ seri(lua_State *L, struct block *b, int len) {
 	lua_pushinteger(L, sz);
 }
 
+// c.unpack
+// skynet.unpack
 int
 luaseri_unpack(lua_State *L) {
 	if (lua_isnoneornil(L,1)) {
@@ -594,6 +596,8 @@ luaseri_unpack(lua_State *L) {
 	return lua_gettop(L) - 1;
 }
 
+// c.pack
+// skynet.pack
 int
 luaseri_pack(lua_State *L) {
 	struct block temp;

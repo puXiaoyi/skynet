@@ -55,10 +55,10 @@
 
 // 写缓冲区
 struct write_buffer {
-	struct write_buffer * next;
-	void *buffer;
-	char *ptr;
-	int sz;
+	struct write_buffer * next;				// 下一个写缓冲区指针
+	void *buffer;							// 数据缓冲区
+	char *ptr;								// 数据指针
+	int sz;									// 数据大小
 	bool userobject;
 	uint8_t udp_address[UDP_ADDRESS_SIZE];
 };
@@ -542,22 +542,29 @@ send_list_tcp(struct socket_server *ss, struct socket *s, struct wb_list *list, 
 			if (sz < 0) {
 				switch(errno) {
 				case EINTR:
+					// 信用中断，循环等待
 					continue;
 				case AGAIN_WOULDBLOCK:
+					// 写缓冲区满，直接返回
 					return -1;
 				}
+				// 关闭socket
 				force_close(ss,s, result);
 				return SOCKET_CLOSE;
 			}
 			s->wb_size -= sz;
 			if (sz != tmp->sz) {
+				// 如果缓冲区数据没有发送完，直接返回-1
+				// tmp缓冲区仍然在缓冲区链表中，等待下一次发送
 				tmp->ptr += sz;
 				tmp->sz -= sz;
 				return -1;
 			}
 			break;
 		}
+		// head指针偏移到tmp下一个缓冲区
 		list->head = tmp->next;
+		// 释放tmp缓冲区
 		write_buffer_free(ss,tmp);
 	}
 	list->tail = NULL;
@@ -634,15 +641,17 @@ send_list(struct socket_server *ss, struct socket *s, struct wb_list *list, stru
 	}
 }
 
+// 返回s缓冲区是否已发送完
 static inline int
 list_uncomplete(struct wb_list *s) {
 	struct write_buffer *wb = s->head;
 	if (wb == NULL)
 		return 0;
-	
+	// 未发送完，ptr已发生了偏移
 	return (void *)wb->ptr != wb->buffer;
 }
 
+// 把低优先级链表中发送完的head缓冲区放到空的高优先级链表
 static void
 raise_uncomplete(struct socket * s) {
 	struct wb_list *low = &s->low;
@@ -706,16 +715,20 @@ send_buffer(struct socket_server *ss, struct socket *s, struct socket_message *r
 	return -1;
 }
 
+// 发送缓冲区链表s的数据
+// n是偏移量，request->buffer已发送了n个字节
 static struct write_buffer *
 append_sendbuffer_(struct socket_server *ss, struct wb_list *s, struct request_send * request, int size, int n) {
 	struct write_buffer * buf = MALLOC(size);
 	struct send_object so;
 	buf->userobject = send_object_init(ss, &so, request->buffer, request->sz);
+	// 已发送n个字节，所以指针+n，大小-n
 	buf->ptr = (char*)so.buffer+n;
 	buf->sz = so.sz - n;
 	buf->buffer = request->buffer;
 	buf->next = NULL;
 	if (s->head == NULL) {
+		// 链表为空
 		s->head = s->tail = buf;
 	} else {
 		assert(s->tail != NULL);
@@ -787,6 +800,7 @@ send_socket(struct socket_server *ss, struct request_send * request, struct sock
 				switch(errno) {
 				case EINTR:
 				case AGAIN_WOULDBLOCK:
+					// 信号中断或者缓冲区写满
 					n = 0;
 					break;
 				default:
@@ -1302,7 +1316,7 @@ report_accept(struct socket_server *ss, struct socket *s, struct socket_message 
 	result->opaque = s->opaque;
 	result->id = s->id;			// 服务器套接字id
 	result->ud = id;			// 被动套接字id
-	result->data = NULL;		// 连接客户端ip地址
+	result->data = NULL;		// 连接客户端ip地址:port端口
 
 	void * sin_addr = (u.s.sa_family == AF_INET) ? (void*)&u.v4.sin_addr : (void *)&u.v6.sin6_addr;
 	int sin_port = ntohs((u.s.sa_family == AF_INET) ? u.v4.sin_port : u.v6.sin6_port);

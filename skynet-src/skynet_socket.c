@@ -35,12 +35,17 @@ skynet_socket_free() {
 
 // 转发不同类型的消息
 // mainloop thread
+// type 消息类型，SOCKET_DATA 等
+// padding 是否填充
+// result socket_message 
 static void
 forward_message(int type, bool padding, struct socket_message * result) {
 	// 先把socket_message装入skynet_socket_message
 	struct skynet_socket_message *sm;
 	size_t sz = sizeof(*sm);
 	if (padding) {
+		// 如果是填充，多分配一些连续内存空间
+		// SOCKET_OPEN SOCKET_ACCEPT SOCKET_ERROR 不能把data数据写入缓冲区
 		if (result->data) {
 			size_t msg_sz = strlen(result->data);
 			if (msg_sz > 128) {
@@ -56,9 +61,11 @@ forward_message(int type, bool padding, struct socket_message * result) {
 	sm->id = result->id;
 	sm->ud = result->ud;
 	if (padding) {
+		// 如果是填充，不能放入缓冲区，复制到sm之后的内存空间
 		sm->buffer = NULL;
 		memcpy(sm+1, result->data, sz - sizeof(*sm));
 	} else {
+		// 如果不是填充，直接放入缓冲区
 		sm->buffer = result->data;
 	}
 
