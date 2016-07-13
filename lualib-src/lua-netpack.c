@@ -37,8 +37,8 @@ struct netpack {
 struct uncomplete {
 	struct netpack pack;		// 消息包
 	struct uncomplete * next;	// 下一个指针
-	int read;					// 已读长度
-	int header;					// 
+	int read;					// 数据包已读长度
+	int header;					// 单字节长数据包的字节代表的高8位整数值
 };
 
 // 消息包队列结构
@@ -499,15 +499,21 @@ lfilter(lua_State *L) {
 		lightuserdata msg
 		integer size
  */
+ // netpack.pop(queue)
 static int
 lpop(lua_State *L) {
+	// 获取第一个参数值，queue
 	struct queue * q = lua_touserdata(L, 1);
 	if (q == NULL || q->head == q->tail)
+		// 如果队列为空或者已满，返回0
 		return 0;
+	// 获取队列头索引消息包
 	struct netpack *np = &q->queue[q->head];
 	if (++q->head >= q->cap) {
+		// 回绕
 		q->head = 0;
 	}
+	// 把消息包的属性值压栈作为lua返回值
 	lua_pushinteger(L, np->id);
 	lua_pushlightuserdata(L, np->buffer);
 	lua_pushinteger(L, np->size);
@@ -594,7 +600,7 @@ luaopen_netpack(lua_State *L) {
 		{ "tostring", ltostring },
 		{ NULL, NULL },
 	};
-	// 创建一张新的表，并把列表 l 中的函数注册进去。
+	// 创建一张新的表，并把列表 l 中的函数注册进去
 	luaL_newlib(L,l);
 
 	// the order is same with macros : TYPE_* (defined top)

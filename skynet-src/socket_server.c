@@ -1014,6 +1014,7 @@ has_cmd(struct socket_server *ss) {
 	return 0;
 }
 
+// 创建udp类型的socket实例
 static void
 add_udp_socket(struct socket_server *ss, struct request_udp *udp) {
 	int id = udp->id;
@@ -1029,6 +1030,7 @@ add_udp_socket(struct socket_server *ss, struct request_udp *udp) {
 		ss->slot[HASH_ID(id)].type = SOCKET_TYPE_INVALID;
 		return;
 	}
+	// 直接设置socket为已连接类型
 	ns->type = SOCKET_TYPE_CONNECTED;
 	memset(ns->p.udp_address, 0, sizeof(ns->p.udp_address));
 }
@@ -1180,6 +1182,9 @@ forward_message_tcp(struct socket_server *ss, struct socket *s, struct socket_me
 	return SOCKET_DATA;
 }
 
+// 填充udp地址，返回地址长度
+// type(1) + port(2) + addr(4)
+// type(1) + port(2) + addr(16)
 static int
 gen_udp_address(int protocol, union sockaddr_all *sa, uint8_t * udp_address) {
 	int addrsz = 1;
@@ -1198,6 +1203,7 @@ gen_udp_address(int protocol, union sockaddr_all *sa, uint8_t * udp_address) {
 	return addrsz;
 }
 
+// 从套接字接受数据，返回SOCKET_UDP
 static int
 forward_message_udp(struct socket_server *ss, struct socket *s, struct socket_message * result) {
 	union sockaddr_all sa;
@@ -1699,31 +1705,37 @@ socket_server_userobject(struct socket_server *ss, struct socket_object_interfac
 }
 
 // UDP
-
+// 创建udp套接字
 int 
 socket_server_udp(struct socket_server *ss, uintptr_t opaque, const char * addr, int port) {
 	int fd;
 	int family;
 	if (port != 0 || addr != NULL) {
 		// bind
+		// 创建数据报套接字，并绑定端口
 		fd = do_bind(addr, port, IPPROTO_UDP, &family);
 		if (fd < 0) {
 			return -1;
 		}
 	} else {
 		family = AF_INET;
+		// 创建数据报套接字
 		fd = socket(family, SOCK_DGRAM, 0);
 		if (fd < 0) {
 			return -1;
 		}
 	}
+	// 设置套接字为非阻塞
 	sp_nonblocking(fd);
 
+	// 分配id
 	int id = reserve_id(ss);
 	if (id < 0) {
 		close(fd);
 		return -1;
 	}
+	
+	// 填充请求包，发送指令
 	struct request_package request;
 	request.u.udp.id = id;
 	request.u.udp.fd = fd;
@@ -1767,6 +1779,7 @@ socket_server_udp_send(struct socket_server *ss, int id, const struct socket_udp
 	return s->wb_size;
 }
 
+// udp连接
 int
 socket_server_udp_connect(struct socket_server *ss, int id, const char * addr, int port) {
 	int status;
@@ -1807,6 +1820,7 @@ socket_server_udp_connect(struct socket_server *ss, int id, const char * addr, i
 
 const struct socket_udp_address *
 socket_server_udp_address(struct socket_server *ss, struct socket_message *msg, int *addrsz) {
+	// ?
 	uint8_t * address = (uint8_t *)(msg->data + msg->ud);
 	int type = address[0];
 	switch(type) {
