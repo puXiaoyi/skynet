@@ -71,6 +71,7 @@ lfreepool(lua_State *L) {
 static int
 lnewpool(lua_State *L, int sz) {
 	// 新建一块完全用户数据，压栈当作缓冲区池
+	// 分配指定大小的内存块，栈上保存的只是内存地址
 	struct buffer_node * pool = lua_newuserdata(L, sizeof(struct buffer_node) * sz);
 	int i;
 	for (i=0;i<sz;i++) {
@@ -136,30 +137,61 @@ lpushbuffer(lua_State *L) {
 	}
 	int pool_index = 2;
 	// 检查第二个参数是否为table类型
+	/*
+		local buffer_pool = {}
+		buffer_pool是在lua层(socket.lua)中创建并初始化空表
+		lua方法pop,push,readall,readline,clear中作为第二个参数传入
+		在lua绑定的c方法中，从栈中取出第二个元素，即可得到buffer_pool
+
+		buffer_pool[1]，存放的是一个lightuserdata，即缓冲区池第一个节点的地址，见lua_pushlightuserdata(L, free_node->next);	
+		buffer_pool[2] ...，存放的是userdata，即固定大小的链表数组内存地址，见lua_rawseti(L, pool_index, tsz+1);
+	*/
 	luaL_checktype(L,pool_index,LUA_TTABLE);
 	// 获取第四个参数值，消息长度
 	int sz = luaL_checkinteger(L,4);
 	// 把缓冲池lua表的第一个元素压栈
 	lua_rawgeti(L,pool_index,1);
 	// 获取缓冲池lua表的第一个元素
+	// 准确地说是 获取第一个元素存放的指针 所指向的一段完全用户数据 其实就是一个缓冲区节点
 	struct buffer_node * free_node = lua_touserdata(L,-1);	// sb poolt msg size free_node
-	lua_pop(L,1);
 	// 把缓冲池lua表的第一个元素弹出栈
+	lua_pop(L,1);
 	if (free_node == NULL) {
-		// ?
+		// 如果获取到的缓冲区节点为空，说明buffer_pool[n]里的buffer_node已经用光
+
+		// 获取buffer_pool表的长度
+		// 初始为0，一直递增，直到vm重启
+		/*
+			tsz buffer_pool表的长度
+			index buffer_pool表的索引
+			size buffer_pool[index]存放buffer_node的数量
+		
+			tsz  size          index
+			0    8 << 1 = 16   2
+			2    8 << 2 = 32   3
+			.
+			.
+			.
+			9    8 << 9 = 4096 10
+			10   8 << 9 = 4096 11
+		*/
 		int tsz = lua_rawlen(L,pool_index);
 		if (tsz == 0)
+			// 初始为0，预留buffer_pool[1]存放lightuserdata
 			tsz++;
-		// pool[2] 8 struct buffer_node
 		int size = 8;
 		if (tsz <= LARGE_PAGE_NODE-3) {
 			size <<= tsz;
 		} else {
+			// 不超过4096，即2的12次方
 			size <<= LARGE_PAGE_NODE-3;
 		}
-		// 新建缓冲池
+		// 新建缓冲区池
+		// struct buffer_node * pool = lua_newuserdata(L, sizeof(struct buffer_node) * sz);
 		lnewpool(L, size);	
+		// 获取新建缓冲区池第一个缓冲区节点
 		free_node = lua_touserdata(L,-1);
+		// 把新建的缓冲区池放到缓冲区池lua表的特定索引中
 		lua_rawseti(L, pool_index, tsz+1);
 	}
 	// 把缓冲池lua表的第一个元素的下一个元素压栈
@@ -464,6 +496,7 @@ lreadline(lua_State *L) {
 			}
 			return 1;
 		}
+		// 如果没有分隔符，移动一个字符继续检索
 		++from;
 		--bytes;
 		if (bytes == 0) {
@@ -652,6 +685,7 @@ llisten(lua_State *L) {
 	return 1;
 }
 
+// 计算lua table的长度
 static size_t
 count_size(lua_State *L, int index) {
 	size_t tlen = 0;
@@ -666,6 +700,7 @@ count_size(lua_State *L, int index) {
 	return tlen;
 }
 
+// 把lua table连接成字符串
 static void
 concat_table(lua_State *L, int index, void *buffer, size_t tlen) {
 	char *ptr = buffer;
