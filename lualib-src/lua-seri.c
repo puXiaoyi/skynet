@@ -11,11 +11,22 @@
 #include <assert.h>
 #include <string.h>
 
-#define TYPE_NIL 0
-#define TYPE_BOOLEAN 1
+#define TYPE_NIL 0				// nil
+#define TYPE_BOOLEAN 1			// 布尔型
 // hibits 0 false 1 true
-#define TYPE_NUMBER 2
+#define TYPE_NUMBER 2			// 数字型
 // hibits 0 : 0 , 1: byte, 2:word, 4: dword, 6: qword, 8 : double
+/*
+	数字型，通过 TYPE_NUMBER 和 子类型 计算复合类型
+	COMBINE_TYPE(t,v) ((t) | (v) << 3)
+	
+	TYPE_NUMBER_ZERO	0
+	TYPE_NUMBER_BYTE	8位无符号整数
+	TYPE_NUMBER_WORD 	16位无符号整数
+	TYPE_NUMBER_DWORD	32位整数
+	TYPE_NUMBER_QWORD	64位整数
+	TYPE_NUMBER_REAL 	双精度数
+*/
 #define TYPE_NUMBER_ZERO 0
 #define TYPE_NUMBER_BYTE 1
 #define TYPE_NUMBER_WORD 2
@@ -24,7 +35,10 @@
 #define TYPE_NUMBER_REAL 8
 
 #define TYPE_USERDATA 3
-#define TYPE_SHORT_STRING 4
+/*
+	字符串类型，具体不同见wb_string
+*/
+#define TYPE_SHORT_STRING 4	
 // hibits 0~31 : len
 #define TYPE_LONG_STRING 5
 #define TYPE_TABLE 6
@@ -35,24 +49,28 @@
 #define BLOCK_SIZE 128
 #define MAX_DEPTH 32
 
+// 写缓冲区块
 struct block {
 	struct block * next;
 	char buffer[BLOCK_SIZE];
 };
 
+// 写缓冲区链表
 struct write_block {
-	struct block * head;
-	struct block * current;
-	int len;
-	int ptr;
+	struct block * head;		// 头部块指针
+	struct block * current;		// 当前块指针
+	int len;					// 已读数据长度
+	int ptr;					// 指针偏移大小
 };
 
+// 读缓冲区快
 struct read_block {
-	char * buffer;
-	int len;
-	int ptr;
+	char * buffer;				// 数据缓冲区
+	int len;					// 已读数据长度
+	int ptr;					// 
 };
 
+// 分配写缓冲区块内存
 inline static struct block *
 blk_alloc(void) {
 	struct block *b = skynet_malloc(sizeof(struct block));
@@ -60,6 +78,7 @@ blk_alloc(void) {
 	return b;
 }
 
+// 加入写缓冲区
 inline static void
 wb_push(struct write_block *b, const void *buf, int sz) {
 	const char * buffer = buf;
@@ -69,11 +88,14 @@ _again:
 		b->ptr = 0;
 	}
 	if (b->ptr <= BLOCK_SIZE - sz) {
+		// 如果当前缓冲区足够写入数据
 		memcpy(b->current->buffer + b->ptr, buffer, sz);
 		b->ptr+=sz;
 		b->len+=sz;
 	} else {
+		// 如果当前缓冲区不够写入数据
 		int copy = BLOCK_SIZE - b->ptr;
+		// 把当前缓冲区写满，继续往下一个缓冲区写
 		memcpy(b->current->buffer + b->ptr, buffer, copy);
 		buffer += copy;
 		b->len += copy;
@@ -82,6 +104,7 @@ _again:
 	}
 }
 
+// 初始化写缓冲区链表
 static void
 wb_init(struct write_block *wb , struct block *b) {
 	wb->head = b;
@@ -91,6 +114,7 @@ wb_init(struct write_block *wb , struct block *b) {
 	wb->ptr = 0;
 }
 
+// 释放写缓冲区链表
 static void
 wb_free(struct write_block *wb) {
 	struct block *blk = wb->head;
@@ -106,6 +130,7 @@ wb_free(struct write_block *wb) {
 	wb->len = 0;
 }
 
+// 初始化读缓冲区块
 static void
 rball_init(struct read_block * rb, char * buffer, int size) {
 	rb->buffer = buffer;
@@ -113,6 +138,7 @@ rball_init(struct read_block * rb, char * buffer, int size) {
 	rb->ptr = 0;
 }
 
+// 读特定长度读缓冲区块数据
 static void *
 rb_read(struct read_block *rb, int sz) {
 	if (rb->len < sz) {
@@ -125,45 +151,54 @@ rb_read(struct read_block *rb, int sz) {
 	return rb->buffer + ptr;
 }
 
+// 写入nil数据
 static inline void
 wb_nil(struct write_block *wb) {
 	uint8_t n = TYPE_NIL;
 	wb_push(wb, &n, 1);
 }
 
+// 写入boolean数据
 static inline void
 wb_boolean(struct write_block *wb, int boolean) {
 	uint8_t n = COMBINE_TYPE(TYPE_BOOLEAN , boolean ? 1 : 0);
 	wb_push(wb, &n, 1);
 }
 
+// 写入integer整数
 static inline void
 wb_integer(struct write_block *wb, lua_Integer v) {
 	int type = TYPE_NUMBER;
 	if (v == 0) {
+		// 写入0，只需要写入类型头
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_ZERO);
 		wb_push(wb, &n, 1);
 	} else if (v != (int32_t)v) {
+		// 写入64位整数
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_QWORD);
 		int64_t v64 = v;
 		wb_push(wb, &n, 1);
 		wb_push(wb, &v64, sizeof(v64));
 	} else if (v < 0) {
+		// 写入32位负整数
 		int32_t v32 = (int32_t)v;
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_DWORD);
 		wb_push(wb, &n, 1);
 		wb_push(wb, &v32, sizeof(v32));
 	} else if (v<0x100) {
+		// 写入8位无符号整数
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_BYTE);
 		wb_push(wb, &n, 1);
 		uint8_t byte = (uint8_t)v;
 		wb_push(wb, &byte, sizeof(byte));
 	} else if (v<0x10000) {
+		// 写入16位无符号整数
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_WORD);
 		wb_push(wb, &n, 1);
 		uint16_t word = (uint16_t)v;
 		wb_push(wb, &word, sizeof(word));
 	} else {
+		// 写入32位正整数
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_DWORD);
 		wb_push(wb, &n, 1);
 		uint32_t v32 = (uint32_t)v;
@@ -171,6 +206,7 @@ wb_integer(struct write_block *wb, lua_Integer v) {
 	}
 }
 
+// 写入双精度浮点数
 static inline void
 wb_real(struct write_block *wb, double v) {
 	uint8_t n = COMBINE_TYPE(TYPE_NUMBER , TYPE_NUMBER_REAL);
@@ -178,6 +214,7 @@ wb_real(struct write_block *wb, double v) {
 	wb_push(wb, &v, sizeof(v));
 }
 
+// 写入用户数据指针地址
 static inline void
 wb_pointer(struct write_block *wb, void *v) {
 	uint8_t n = TYPE_USERDATA;
@@ -185,9 +222,17 @@ wb_pointer(struct write_block *wb, void *v) {
 	wb_push(wb, &v, sizeof(v));
 }
 
+// 写入字符串
 static inline void
 wb_string(struct write_block *wb, const char *str, int len) {
+	/*
+		字符串也是复合类型
+		如果是短字符串TYPE_SHORT_STRING，和长度len合并计算
+		如果是长字符串TYPE_LONG_STRING，再根据长度len判断。如果长度少于64K，和2合并计算。否则，和4合并计算。
+		如果是长字符串TYPE_LONG_STRING，还要把2或4的标识位，在类型之后写入缓冲区
+	*/
 	if (len < MAX_COOKIE) {
+		// 如果长度小于32
 		uint8_t n = COMBINE_TYPE(TYPE_SHORT_STRING, len);
 		wb_push(wb, &n, 1);
 		if (len > 0) {
@@ -196,11 +241,13 @@ wb_string(struct write_block *wb, const char *str, int len) {
 	} else {
 		uint8_t n;
 		if (len < 0x10000) {
+			// 如果长度少于64K
 			n = COMBINE_TYPE(TYPE_LONG_STRING, 2);
 			wb_push(wb, &n, 1);
 			uint16_t x = (uint16_t) len;
 			wb_push(wb, &x, 2);
 		} else {
+			// 如果长度超过64K
 			n = COMBINE_TYPE(TYPE_LONG_STRING, 4);
 			wb_push(wb, &n, 1);
 			uint32_t x = (uint32_t) len;
@@ -212,21 +259,30 @@ wb_string(struct write_block *wb, const char *str, int len) {
 
 static void pack_one(lua_State *L, struct write_block *b, int index, int depth);
 
+// 写入数组table
 static int
 wb_table_array(lua_State *L, struct write_block * wb, int index, int depth) {
+	// 获取数组长度
 	int array_size = lua_rawlen(L,index);
 	if (array_size >= MAX_COOKIE-1) {
+		// 如果数组长度超过31
+		// 把31合并类型并写入，再写入数组长度
 		uint8_t n = COMBINE_TYPE(TYPE_TABLE, MAX_COOKIE-1);
 		wb_push(wb, &n, 1);
 		wb_integer(wb, array_size);
 	} else {
+		// 如果数组长度小于31
+		// 把数组长度合并类型并写入
 		uint8_t n = COMBINE_TYPE(TYPE_TABLE, array_size);
 		wb_push(wb, &n, 1);
 	}
 
 	int i;
+	// 遍历数组元素并写入
 	for (i=1;i<=array_size;i++) {
+		// 把数组元素压栈
 		lua_rawgeti(L,index,i);
+		// 递归读取
 		pack_one(L, wb, -1, depth);
 		lua_pop(L,1);
 	}
@@ -234,28 +290,38 @@ wb_table_array(lua_State *L, struct write_block * wb, int index, int depth) {
 	return array_size;
 }
 
+// 写入哈希table
 static void
 wb_table_hash(lua_State *L, struct write_block * wb, int index, int depth, int array_size) {
+	// 先把nil压栈，作为第一个键
 	lua_pushnil(L);
 	while (lua_next(L, index) != 0) {
+		// 从栈顶弹出一个键， 然后把索引指定的表中的一个键值对压栈 （弹出的键之后的 “下一” 对）
+		// 先压键后压值，-2是键，-1是值
 		if (lua_type(L,-2) == LUA_TNUMBER) {
 			if (lua_isinteger(L, -2)) {
+				// 如果是数字键
 				lua_Integer x = lua_tointeger(L,-2);
 				if (x>0 && x<=array_size) {
+					// 如果小于数组长度，已经在wb_table_array写入过，所以弹出栈不再做处理
 					lua_pop(L,1);
 					continue;
 				}
 			}
 		}
+		// 分别对键值进行递归写入
 		pack_one(L,wb,-2,depth);
 		pack_one(L,wb,-1,depth);
 		lua_pop(L, 1);
 	}
+	// 最后再写入nil ?
 	wb_nil(wb);
 }
 
+// 写入元table
 static void
 wb_table_metapairs(lua_State *L, struct write_block *wb, int index, int depth) {
+	// 把0合并类型并写入
 	uint8_t n = COMBINE_TYPE(TYPE_TABLE, 0);
 	wb_push(wb, &n, 1);
 	lua_pushvalue(L, index);
@@ -277,20 +343,25 @@ wb_table_metapairs(lua_State *L, struct write_block *wb, int index, int depth) {
 	wb_nil(wb);
 }
 
+// 写入table
 static void
 wb_table(lua_State *L, struct write_block *wb, int index, int depth) {
 	luaL_checkstack(L, LUA_MINSTACK, NULL);
 	if (index < 0) {
+		// 负索引转化为正索引
 		index = lua_gettop(L) + index + 1;
 	}
 	if (luaL_getmetafield(L, index, "__pairs") != LUA_TNIL) {
+		// 如果元表不为空，写元table
 		wb_table_metapairs(L, wb, index, depth);
 	} else {
+		// 否则先写数组table，后写哈希table
 		int array_size = wb_table_array(L, wb, index, depth);
 		wb_table_hash(L, wb, index, depth, array_size);
 	}
 }
 
+// pack主函数
 static void
 pack_one(lua_State *L, struct write_block *b, int index, int depth) {
 	if (depth > MAX_DEPTH) {
@@ -341,6 +412,7 @@ static void
 pack_from(lua_State *L, struct write_block *b, int from) {
 	int n = lua_gettop(L) - from;
 	int i;
+	// 遍历lua栈，正索引从低到高，依次写入
 	for (i=1;i<=n;i++) {
 		pack_one(L, b , from + i, 0);
 	}
