@@ -11,10 +11,10 @@
 #include <assert.h>
 #include <string.h>
 
-#define TYPE_NIL 0				// nil
-#define TYPE_BOOLEAN 1			// 布尔型
+#define TYPE_NIL 0
+#define TYPE_BOOLEAN 1
 // hibits 0 false 1 true
-#define TYPE_NUMBER 2			// 数字型
+#define TYPE_NUMBER 2
 // hibits 0 : 0 , 1: byte, 2:word, 4: dword, 6: qword, 8 : double
 /*
 	数字型，通过 TYPE_NUMBER 和 子类型 计算复合类型
@@ -25,7 +25,7 @@
 	TYPE_NUMBER_WORD 	16位无符号整数
 	TYPE_NUMBER_DWORD	32位整数
 	TYPE_NUMBER_QWORD	64位整数
-	TYPE_NUMBER_REAL 	双精度数
+	TYPE_NUMBER_REAL 	双精度浮点数
 */
 #define TYPE_NUMBER_ZERO 0
 #define TYPE_NUMBER_BYTE 1
@@ -51,8 +51,8 @@
 
 // 写缓冲区块
 struct block {
-	struct block * next;
-	char buffer[BLOCK_SIZE];
+	struct block * next;		// 下一块指针
+	char buffer[BLOCK_SIZE];	// 缓冲区数据
 };
 
 // 写缓冲区链表
@@ -63,16 +63,17 @@ struct write_block {
 	int ptr;					// 指针偏移大小
 };
 
-// 读缓冲区快
+// 读缓冲区块
 struct read_block {
 	char * buffer;				// 数据缓冲区
 	int len;					// 已读数据长度
-	int ptr;					// 
+	int ptr;					// 指针偏移大小
 };
 
 // 分配写缓冲区块内存
 inline static struct block *
 blk_alloc(void) {
+	// 除了第一个缓冲区块在栈上，其他手动分配堆内存
 	struct block *b = skynet_malloc(sizeof(struct block));
 	b->next = NULL;
 	return b;
@@ -118,6 +119,7 @@ wb_init(struct write_block *wb , struct block *b) {
 static void
 wb_free(struct write_block *wb) {
 	struct block *blk = wb->head;
+	// 第一个缓冲区块在栈上
 	blk = blk->next;	// the first block is on stack
 	while (blk) {
 		struct block * next = blk->next;
@@ -161,6 +163,7 @@ wb_nil(struct write_block *wb) {
 // 写入boolean数据
 static inline void
 wb_boolean(struct write_block *wb, int boolean) {
+	// 如果真，和1合并类型并写入。否则，和0合并类型并写入。
 	uint8_t n = COMBINE_TYPE(TYPE_BOOLEAN , boolean ? 1 : 0);
 	wb_push(wb, &n, 1);
 }
@@ -227,9 +230,9 @@ static inline void
 wb_string(struct write_block *wb, const char *str, int len) {
 	/*
 		字符串也是复合类型
-		如果是短字符串TYPE_SHORT_STRING，和长度len合并计算
-		如果是长字符串TYPE_LONG_STRING，再根据长度len判断。如果长度少于64K，和2合并计算。否则，和4合并计算。
-		如果是长字符串TYPE_LONG_STRING，还要把2或4的标识位，在类型之后写入缓冲区
+		如果是短字符串TYPE_SHORT_STRING，和长度len合并类型并写入
+		如果是长字符串TYPE_LONG_STRING，再根据长度len判断。如果长度少于64K，和2合并类型并写入。否则，和4合并类型并写入。
+		如果是长字符串TYPE_LONG_STRING，还要把长度len在类型之后写入缓冲区
 	*/
 	if (len < MAX_COOKIE) {
 		// 如果长度小于32
@@ -312,9 +315,10 @@ wb_table_hash(lua_State *L, struct write_block * wb, int index, int depth, int a
 		// 分别对键值进行递归写入
 		pack_one(L,wb,-2,depth);
 		pack_one(L,wb,-1,depth);
+		// 把值弹出栈，保留键作为下一次lua_next参数
 		lua_pop(L, 1);
 	}
-	// 最后再写入nil ?
+	// 最后再写入nil，作为结束标识位
 	wb_nil(wb);
 }
 
@@ -324,22 +328,85 @@ wb_table_metapairs(lua_State *L, struct write_block *wb, int index, int depth) {
 	// 把0合并类型并写入
 	uint8_t n = COMBINE_TYPE(TYPE_TABLE, 0);
 	wb_push(wb, &n, 1);
+	// 把表复制一份
 	lua_pushvalue(L, index);
+	/*
+		function meta.__pairs(t)
+		  return next, t, nil
+		end
+
+		function meta.__pairs(t)
+		  return function(t, k)
+		    local v
+		    repeat
+		      k, v = next(t, k)
+		    until k == nil or theseok(t, k, v)
+		    return k, v
+		  end, t, nil
+		end
+	
+		执行__pairs元方法，即pairs(t)
+		返回3个参数，next函数，表t，以及nil
+		for k,v in pairs(t) do body end 就可以迭代表t中的所有键值对
+
+	*/
 	lua_call(L, 1, 3);
+	/*
+		执行完lua_call(L, 1, 3)后，栈上的元素
+		-1 nil
+		-2 表t
+		-3 next函数
+	*/
 	for(;;) {
 		lua_pushvalue(L, -2);
 		lua_pushvalue(L, -2);
+		/*
+			执行完两遍lua_pushvalue(L, -2)后，栈上的元素
+			-1 k(第一次循环为nil)
+			-2 表t
+			-3 k(第一次循环为nil)
+			-4 表t	
+			-5 next函数
+		*/
 		lua_copy(L, -5, -3);
-		lua_call(L, 2, 2);
+		/*
+			执行完lua_copy(L, -5, -3)后，栈上的元素
+			-1 k(第一次循环为nil)
+			-2 表t
+			-3 next函数
+			-4 表t	
+			-5 next函数
+		*/
+		// 执行next(table[,index])函数，返回index键下一个键值对
+		// index为nil，返回table的初始键值对
+		lua_call(L, 2, 2);		
+		/*
+			执行完lua_call(L, 2, 2)后，栈上的元素
+			-1 v
+			-2 k 
+			-3 表t	
+			-4 next函数
+		*/
 		int type = lua_type(L, -2);
 		if (type == LUA_TNIL) {
+			// 如果返回的键为空，清空栈顶
 			lua_pop(L, 4);
 			break;
 		}
+		// 递归写入键
 		pack_one(L, wb, -2, depth);
+		// 递归写入值
 		pack_one(L, wb, -1, depth);
-		lua_pop(L, 1);
+		// 把v弹出栈，保留k作为下一次next参数
+		lua_pop(L, 1);	
+		/*
+			执行完lua_pop(L, 1)后，栈上的元素
+			-1 k 
+			-2 表t	
+			-3 next函数
+		*/
 	}
+	// 最后再写入nil，作为结束标识位
 	wb_nil(wb);
 }
 
@@ -352,7 +419,7 @@ wb_table(lua_State *L, struct write_block *wb, int index, int depth) {
 		index = lua_gettop(L) + index + 1;
 	}
 	if (luaL_getmetafield(L, index, "__pairs") != LUA_TNIL) {
-		// 如果元表不为空，写元table
+		// 如果table有__pairs元方法，把__pairs元方法压栈
 		wb_table_metapairs(L, wb, index, depth);
 	} else {
 		// 否则先写数组table，后写哈希table
@@ -504,6 +571,7 @@ static void unpack_one(lua_State *L, struct read_block *rb);
 static void
 unpack_table(lua_State *L, struct read_block *rb, int array_size) {
 	if (array_size == MAX_COOKIE-1) {
+		// 真实数组长度，是一个数字类型
 		uint8_t type;
 		uint8_t *t = rb_read(rb, sizeof(type));
 		if (t==NULL) {
@@ -511,24 +579,32 @@ unpack_table(lua_State *L, struct read_block *rb, int array_size) {
 		}
 		type = *t;
 		int cookie = type >> 3;
+		// 非浮点数的数字型
 		if ((type & 7) != TYPE_NUMBER || cookie == TYPE_NUMBER_REAL) {
 			invalid_stream(L,rb);
 		}
+		// 获取真实数组长度
 		array_size = get_integer(L,rb,cookie);
 	}
 	luaL_checkstack(L,LUA_MINSTACK,NULL);
+	// 创建一张新的lua表
 	lua_createtable(L,array_size,0);
 	int i;
+	// 遍历数组元素
 	for (i=1;i<=array_size;i++) {
 		unpack_one(L,rb);
 		lua_rawseti(L,-2,i);
 	}
+	// 遍历键值对
 	for (;;) {
+		// 键
 		unpack_one(L,rb);
 		if (lua_isnil(L,-1)) {
+			// 如果键为空，遍历结束
 			lua_pop(L,1);
 			return;
 		}
+		// 值
 		unpack_one(L,rb);
 		lua_rawset(L,-3);
 	}
@@ -603,9 +679,11 @@ unpack_one(lua_State *L, struct read_block *rb) {
 
 static void
 seri(lua_State *L, struct block *b, int len) {
+	// 创建新的缓冲区
 	uint8_t * buffer = skynet_malloc(len);
 	uint8_t * ptr = buffer;
 	int sz = len;
+	// 遍历写缓冲区块，复制数据到新缓冲区
 	while(len>0) {
 		if (len >= BLOCK_SIZE) {
 			memcpy(ptr, b->buffer, BLOCK_SIZE);
@@ -617,12 +695,13 @@ seri(lua_State *L, struct block *b, int len) {
 			break;
 		}
 	}
-	
+
+	// 把新的缓冲区的指针和大小压栈作为lua返回值
 	lua_pushlightuserdata(L, buffer);
 	lua_pushinteger(L, sz);
 }
 
-// c.unpack
+// c.unpack(str)/c.unpack(msg, sz)
 // skynet.unpack
 int
 luaseri_unpack(lua_State *L) {
@@ -632,10 +711,12 @@ luaseri_unpack(lua_State *L) {
 	void * buffer;
 	int len;
 	if (lua_type(L,1) == LUA_TSTRING) {
+		// string
 		size_t sz;
-		 buffer = (void *)lua_tolstring(L,1,&sz);
+		buffer = (void *)lua_tolstring(L,1,&sz);
 		len = (int)sz;
 	} else {
+		// msg, sz
 		buffer = lua_touserdata(L,1);
 		len = luaL_checkinteger(L,2);
 	}
@@ -646,13 +727,17 @@ luaseri_unpack(lua_State *L) {
 		return luaL_error(L, "deserialize null pointer");
 	}
 
+	// 让缓冲区数据在栈顶
 	lua_settop(L,1);
+	// 读缓冲区初始化
 	struct read_block rb;
 	rball_init(&rb, buffer, len);
 
 	int i;
 	for (i=0;;i++) {
+		// ?
 		if (i%8==7) {
+			// LUA_MINSTACK 一般定义为20
 			luaL_checkstack(L,LUA_MINSTACK,NULL);
 		}
 		uint8_t type = 0;
@@ -660,11 +745,17 @@ luaseri_unpack(lua_State *L) {
 		if (t==NULL)
 			break;
 		type = *t;
+		/*
+			type & 0x7 只保留低三位，获得一级类型 type
+			type >> 3 只保留高五位，获得二级类型 cookie
+		*/
 		push_value(L, &rb, type & 0x7, type>>3);
 	}
 
 	// Need not free buffer
+	// 为什么不需要释放缓冲区?
 
+	// 缓冲区buffer在栈底，所以返回参数数量需要-1
 	return lua_gettop(L) - 1;
 }
 
@@ -672,14 +763,18 @@ luaseri_unpack(lua_State *L) {
 // skynet.pack
 int
 luaseri_pack(lua_State *L) {
+	// 声明第一个块变量，编译器为数据缓冲分配栈内存
 	struct block temp;
 	temp.next = NULL;
 	struct write_block wb;
+	// 初始化写缓冲区链表
 	wb_init(&wb, &temp);
+	// 把lua栈中的元素依次打包写入
 	pack_from(L,&wb,0);
 	assert(wb.head == &temp);
+	// 把写缓冲区链表数据复制到新的缓冲区
 	seri(L, &temp, wb.len);
-
+	// 释放写缓冲区链表
 	wb_free(&wb);
 
 	return 2;
