@@ -33,26 +33,26 @@ struct timer_event {
 
 // 定时器节点结构
 struct timer_node {
-	struct timer_node *next;
-	uint32_t expire;
+	struct timer_node *next;	// 下一个节点指针
+	uint32_t expire;	// 过期触发时间
 };
 
 // 定时器链表
 // 为什么一个用指针，一个不用？
 struct link_list {
-	struct timer_node head;
-	struct timer_node *tail;
+	struct timer_node head;	// 头节点
+	struct timer_node *tail;	// 尾指针
 };
 
 // 定时器结构
 struct timer {
-	struct link_list near[TIME_NEAR];		// 临近时间节点 
-	struct link_list t[4][TIME_LEVEL];		// 
-	struct spinlock lock;				// 回旋锁
-	uint32_t time;					// 递增计数 
-	uint32_t starttime;				// 启动时的UTC时间秒数	
-	uint64_t current;				// 启动后的skynet单位时间数
-	uint64_t current_point;				// 当前时刻的skynet单位时间数
+	struct link_list near[TIME_NEAR];	// 临近时间节点 
+	struct link_list t[4][TIME_LEVEL];	// 
+	struct spinlock lock;	// 回旋锁
+	uint32_t time;	// 递增计数，初始为0，在timer_shift中递增
+	uint32_t starttime;	// 启动时的UTC时间秒数	
+	uint64_t current;	// 启动后的skynet单位时间数
+	uint64_t current_point;	// 当前时刻的skynet单位时间数
 };
 
 static struct timer * TI = NULL;
@@ -75,31 +75,39 @@ link(struct link_list *list,struct timer_node *node) {
 	node->next=0;
 }
 
-// 
+// 添加定时器节点
 static void
 add_node(struct timer *T,struct timer_node *node) {
 	uint32_t time=node->expire;
 	uint32_t current_time=T->time;
 	
 	if ((time|TIME_NEAR_MASK)==(current_time|TIME_NEAR_MASK)) {
+		// 如果高24位相同，
+		// 把节点放到near数组中低8位slot对应的链表尾部
 		link(&T->near[time&TIME_NEAR_MASK],node);
 	} else {
+		// 如果高24位不同
 		int i;
+		// 左移6位
 		uint32_t mask=TIME_NEAR << TIME_LEVEL_SHIFT;
 		for (i=0;i<3;i++) {
+			// 如果高18,12,6,0位相同
 			if ((time|(mask-1))==(current_time|(mask-1))) {
 				break;
 			}
 			mask <<= TIME_LEVEL_SHIFT;
 		}
 
+		// 把节点放到t数组中低6位slot对应的链表尾部
 		link(&T->t[i][((time>>(TIME_NEAR_SHIFT + i*TIME_LEVEL_SHIFT)) & TIME_LEVEL_MASK)],node);	
 	}
 }
 
 static void
 timer_add(struct timer *T,void *arg,size_t sz,int time) {
+	// 柔性结构体，除了分配内存给time_node，额外分配sz大小的内存，存放time_event数据
 	struct timer_node *node = (struct timer_node *)skynet_malloc(sizeof(*node)+sz);
+	// 复制timer_event数据到尾部内存段
 	memcpy(node+1,arg,sz);
 
 	SPIN_LOCK(T);
@@ -120,11 +128,14 @@ move_list(struct timer *T, int level, int idx) {
 	}
 }
 
+// 定时器偏移
+// 一个skynet单位时间偏移一次
 static void
 timer_shift(struct timer *T) {
 	int mask = TIME_NEAR;
 	uint32_t ct = ++T->time;
 	if (ct == 0) {
+		// 无符号32位整数溢出为0
 		move_list(T, 3, 0);
 	} else {
 		uint32_t time = ct >> TIME_NEAR_SHIFT;
@@ -147,17 +158,21 @@ timer_shift(struct timer *T) {
 static inline void
 dispatch_list(struct timer_node *current) {
 	do {
+		// 获取time_event数据
 		struct timer_event * event = (struct timer_event *)(current+1);
+		// 创建回应消息
 		struct skynet_message message;
 		message.source = 0;
 		message.session = event->session;
 		message.data = NULL;
 		message.sz = (size_t)PTYPE_RESPONSE << MESSAGE_TYPE_SHIFT;
 	
-		// 启动定时器的上下文会收到PTYPE_RESPONSE的一条消息
+		// 发送回应消息
 		skynet_context_push(event->handle, &message);
-		
+
+		// 释放当前节点
 		struct timer_node * temp = current;
+		// 遍历下一节点
 		current=current->next;
 		skynet_free(temp);	
 	} while (current);
@@ -166,6 +181,7 @@ dispatch_list(struct timer_node *current) {
 // 运行定时器
 static inline void
 timer_execute(struct timer *T) {
+	// 取低八位索引
 	int idx = T->time & TIME_NEAR_MASK;
 	
 	while (T->near[idx].head.next) {
@@ -201,10 +217,12 @@ timer_create_timer() {
 
 	int i,j;
 
+	// TIME_NEAR 2 << 8
 	for (i=0;i<TIME_NEAR;i++) {
 		link_clear(&r->near[i]);
 	}
 
+	// TIME_LEVEL 2 << 6
 	for (i=0;i<4;i++) {
 		for (j=0;j<TIME_LEVEL;j++) {
 			link_clear(&r->t[i][j]);
@@ -218,9 +236,11 @@ timer_create_timer() {
 	return r;
 }
 
+// skynet.timeout > cmd_timeout > skynet_timeout
 int
 skynet_timeout(uint32_t handle, int time, int session) {
 	if (time <= 0) {
+		// 如果time为0，不注册定时器，直接发送回应消息
 		struct skynet_message message;
 		message.source = 0;
 		message.session = session;
@@ -231,6 +251,7 @@ skynet_timeout(uint32_t handle, int time, int session) {
 			return -1;
 		}
 	} else {
+		// 如果time不为0，注册定时器事件
 		struct timer_event event;
 		event.handle = handle;
 		event.session = session;
@@ -315,10 +336,13 @@ skynet_now(void) {
 
 void 
 skynet_timer_init(void) {
+	// 创建定时器
 	TI = timer_create_timer();
 	uint32_t current = 0;
 	systime(&TI->starttime, &current);
+	// 当前运行累计skynet单位时间数，即开始计时后的累计skynet单位时间数
 	TI->current = current;
+	// 当前以skynet单位时间精度的UTC时间
 	TI->current_point = gettime();
 }
 
