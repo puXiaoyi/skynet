@@ -38,7 +38,13 @@ struct timer_node {
 };
 
 // 定时器链表
-// 为什么一个用指针，一个不用？
+/*
+	为什么一个是指针变量，一个是结构变量
+	因为head.next才是第一个定时器节点，head只起到头占位作用
+	link_clear 返回第一个节点，尾指针指向头占位节点。
+	link 尾指针指向新节点，同时链表内节点依次串联
+
+*/
 struct link_list {
 	struct timer_node head;	// 头节点
 	struct timer_node *tail;	// 尾指针
@@ -82,23 +88,31 @@ add_node(struct timer *T,struct timer_node *node) {
 	uint32_t current_time=T->time;
 	
 	if ((time|TIME_NEAR_MASK)==(current_time|TIME_NEAR_MASK)) {
-		// 如果高24位相同，
-		// 把节点放到near数组中低8位slot对应的链表尾部
+		// 如果高24位相同
 		link(&T->near[time&TIME_NEAR_MASK],node);
 	} else {
 		// 如果高24位不同
 		int i;
-		// 左移6位
+		/*
+			左移6位  i=0 比较高18位
+			左移12位 i=1 比较高12位
+			左移18位 i=2 比较高6位
+			左移24位 i=3 
+
+			如果高24位相同，把低8位作为索引，放入near数组对应slot中
+			如果高18位相同，把低8-14位右移到低6位作为索引，放入t[0]数组对应slot中
+			如果高12位相同，把低14-20位右移到低6位作为索引，放入t[1]数组对应slot中
+			如果高6位相同，把低20-26位右移到低6位作为索引，放入t[2]数组对应slot中
+			如果高6位不同，把低26-32位右移到低6位作为索引，放入t[3]数组对应slot中			
+		*/
 		uint32_t mask=TIME_NEAR << TIME_LEVEL_SHIFT;
 		for (i=0;i<3;i++) {
-			// 如果高18,12,6,0位相同
 			if ((time|(mask-1))==(current_time|(mask-1))) {
 				break;
 			}
 			mask <<= TIME_LEVEL_SHIFT;
 		}
 
-		// 把节点放到t数组中低6位slot对应的链表尾部
 		link(&T->t[i][((time>>(TIME_NEAR_SHIFT + i*TIME_LEVEL_SHIFT)) & TIME_LEVEL_MASK)],node);	
 	}
 }
@@ -120,6 +134,7 @@ timer_add(struct timer *T,void *arg,size_t sz,int time) {
 
 static void
 move_list(struct timer *T, int level, int idx) {
+	// 清空链表，取出第一个节点，依次遍历下一个节点，添加回链表数组中
 	struct timer_node *current = link_clear(&T->t[level][idx]);
 	while (current) {
 		struct timer_node *temp=current->next;
@@ -135,12 +150,19 @@ timer_shift(struct timer *T) {
 	int mask = TIME_NEAR;
 	uint32_t ct = ++T->time;
 	if (ct == 0) {
-		// 无符号32位整数溢出为0
+		// 如果32位均为0
+		// 无符号32位整数溢出，编译器会和2<<32取余，所以可以为0
 		move_list(T, 3, 0);
 	} else {
 		uint32_t time = ct >> TIME_NEAR_SHIFT;
 		int i=0;
 
+		/*
+			i=0 如果低8位为0	右移8位
+			i=1 如果低14位为0	右移14位
+			i=2 如果低20位为0	右移20位
+			i=3 如果低26位为0	右移26位
+		*/
 		while ((ct & (mask-1))==0) {
 			int idx=time & TIME_LEVEL_MASK;
 			if (idx!=0) {
