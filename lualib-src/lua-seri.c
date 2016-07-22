@@ -754,7 +754,13 @@ luaseri_unpack(lua_State *L) {
 
 	// Need not free buffer
 	// 为什么不需要释放缓冲区?
-
+	// 因为由框架在回调完用户注册的服务callback函数后释放，无需由用户代码去手动释放内存
+	/*		
+		if (!ctx->cb(ctx, ctx->cb_ud, type, msg->session, msg->source, msg->data, sz)) {
+			skynet_free(msg->data);
+		} 
+	*/
+	
 	// 缓冲区buffer在栈底，所以返回参数数量需要-1
 	return lua_gettop(L) - 1;
 }
