@@ -6,6 +6,7 @@ local cmd = {}
 local service = {}
 
 local function request(name, func, ...)
+	-- 执行skynet.newservice/snax.rawnewservice获取新服务地址
 	local ok, handle = pcall(func, ...)
 	local s = service[name]
 	assert(type(s) == "table")
@@ -15,6 +16,7 @@ local function request(name, func, ...)
 		service[name] = tostring(handle)
 	end
 
+	-- 成功获得新服务地址，遍历唤醒排队的协程
 	for _,v in ipairs(s) do
 		skynet.wakeup(v)
 	end
@@ -34,6 +36,8 @@ local function waitfor(name , func, ...)
 	local co = coroutine.running()
 
 	if s == nil then
+		-- LAUNCH s.launch = true		service[name] = s 	service[name] = handle	return handle
+		-- QUERY  table.insert(s, co)   service[name] = s 	s = service[name]		return s
 		s = {}
 		service[name] = s
 	elseif type(s) == "string" then
@@ -43,12 +47,16 @@ local function waitfor(name , func, ...)
 	assert(type(s) == "table")
 
 	if not s.launch and func then
+		-- CMD.LAUNCH
 		s.launch = true
 		return request(name, func, ...)
 	end
 
+	-- CMD.QUERY
+	-- 请求的协程，排队挂起等待
 	table.insert(s, co)
 	skynet.wait()
+	-- 协程唤醒后，获得服务地址
 	s = service[name]
 	if type(s) == "string" then
 		error(s)
@@ -101,7 +109,6 @@ local function list_service()
 
 	return result
 end
-
 
 local function register_global()
 	function cmd.GLAUNCH(name, ...)
@@ -186,9 +193,11 @@ skynet.start(function()
 	end)
 	local handle = skynet.localname ".service"
 	if  handle then
+		-- 如果已经注册，退出当前服务
 		skynet.error(".service is already register by ", skynet.address(handle))
 		skynet.exit()
 	else
+		-- 如果没有注册，注册当前服务
 		skynet.register(".service")
 	end
 	if skynet.getenv "standalone" then

@@ -3,14 +3,17 @@ local core = require "skynet.core"
 require "skynet.manager"	-- import manager apis
 local string = string
 
+-- 成功创建的服务
 local services = {}
 local command = {}
+-- hanlde -> response，command.LAUNCH中标识，command.LAUNCHOK/command.ERROR中清理
 local instance = {} -- for confirm (function command.LAUNCH / command.ERROR / command.LAUNCHOK)
 
 local function handle_to_address(handle)
 	return tonumber("0x" .. string.sub(handle , 2))
 end
 
+-- 空响应消息
 local NORET = {}
 
 function command.LIST()
@@ -61,6 +64,7 @@ function command.GC()
 	return command.MEM()
 end
 
+-- 移除未完成初始化的服务实例
 function command.REMOVE(_, handle, kill)
 	services[handle] = nil
 	local response = instance[handle]
@@ -74,28 +78,36 @@ function command.REMOVE(_, handle, kill)
 	return NORET
 end
 
+-- 启动服务
 local function launch_service(service, ...)
 	local param = table.concat({...}, " ")
+	-- 创建服务实例 manager.lua
 	local inst = skynet.launch(service, param)
+	-- 生成闭包
 	local response = skynet.response()
 	if inst then
+		-- 记录服务
 		services[inst] = service .. " " .. param
+		-- 暂存闭包
 		instance[inst] = response
 	else
+		-- 创建服务失败，执行闭包发送错误消息
 		response(false)
 		return
 	end
 	return inst
 end
 
+-- 启动服务接口，见skynet.lua中skynet.newservice方法
 function command.LAUNCH(_, service, ...)
 	launch_service(service, ...)
 	return NORET
 end
-
+-- 启动服务并开启日志
 function command.LOGLAUNCH(_, service, ...)
 	local inst = launch_service(service, ...)
 	if inst then
+		-- lcommand(lua-skynet.c)->skynet_command(skynet_server.c)->cmd_logon(skynet_server.c)->skynet_log_open(skynet_server.c)
 		core.command("LOGON", skynet.address(inst))
 	end
 	return NORET
@@ -113,6 +125,8 @@ function command.ERROR(address)
 	return NORET
 end
 
+-- 启动服务成功接口，见skynet.lua中skynet.init_service方法
+-- skynet.start中的匿名函数运行完毕发送该请求，包括launcher服务本身也给自己发送此消息
 function command.LAUNCHOK(address)
 	-- init notice
 	local response = instance[address]

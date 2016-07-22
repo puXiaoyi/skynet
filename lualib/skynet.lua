@@ -124,7 +124,7 @@ local function co_create(f)
 			f(...)
 			while true do
 				f = nil
-				-- 协程重用
+				-- 协程复用
 				coroutine_pool[#coroutine_pool+1] = co
 				-- 运行的协程被挂起，传递参数true, "EXIT"给suspend(co, coroutine_resume(co, ...))，执行suspend(co, true, "EXIT")
 				-- 协程被复用的时候，执行coroutine_resume(co, f)，唤醒协程获得新的方法参数
@@ -634,8 +634,10 @@ end
 -- 启动单例服务
 function skynet.uniqueservice(global, ...)
 	if global == true then
+		-- 全局服务
 		return assert(skynet.call(".service", "lua", "GLAUNCH", ...))
 	else
+		-- 本地服务
 		return assert(skynet.call(".service", "lua", "LAUNCH", global, ...))
 	end
 end

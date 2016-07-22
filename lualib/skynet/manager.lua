@@ -1,29 +1,38 @@
 local skynet = require "skynet"
 local c = require "skynet.core"
 
+-- 启动服务
 function skynet.launch(...)
+	-- lcommand(lua-skynet.c)->skynet_command(skynet_server.c)->cmd_launch(skynet_server.c)->skynet_context_new(skynet_server.c)
 	local addr = c.command("LAUNCH", table.concat({...}," "))
 	if addr then
 		return tonumber("0x" .. string.sub(addr , 2))
 	end
 end
 
+-- 杀死服务
 function skynet.kill(name)
 	if type(name) == "number" then
+		-- 移除未完成初始化的服务实例
 		skynet.send(".launcher","lua","REMOVE",name, true)
 		name = skynet.address(name)
 	end
+	-- lcommand(lua-skynet.c)->skynet_command(skynet_server.c)->cmd_kill(skynet_server.c)->handle_exit(skynet_server.c)
 	c.command("KILL",name)
 end
 
+-- 中止所有服务
 function skynet.abort()
+	-- lcommand(lua-skynet.c)->skynet_command(skynet_server.c)->cmd_abort(skynet_server.c)->skynet_handle_retireall(skynet_server.c)
 	c.command("ABORT")
 end
+
 
 local function globalname(name, handle)
 	local c = string.sub(name,1,1)
 	assert(c ~= ':')
 	if c == '.' then
+		-- .开头，本地节点服务
 		return false
 	end
 
@@ -37,14 +46,19 @@ local function globalname(name, handle)
 	return true
 end
 
+-- 给当前服务注册一个别名
 function skynet.register(name)
 	if not globalname(name) then
+		-- .开头
+		-- lcommand(lua-skynet.c)->skynet_command(skynet_server.c)->cmd_reg(skynet_server.c)->skynet_handle_namehandle(skynet_server.c)
 		c.command("REG", name)
 	end
 end
 
+-- 给handle服务注册一个别名
 function skynet.name(name, handle)
 	if not globalname(name, handle) then
+		-- lcommand(lua-skynet.c)->skynet_command(skynet_server.c)->cmd_name(skynet_server.c)->skynet_handle_namehandle(skynet_server.c)
 		c.command("NAME", name .. " " .. skynet.address(handle))
 	end
 end
