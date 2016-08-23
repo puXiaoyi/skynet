@@ -219,6 +219,14 @@ start(int thread) {
 	create_thread(&pid[1], thread_timer, m);
 	create_thread(&pid[2], thread_socket, m);
 
+	/*
+		https://github.com/cloudwu/skynet/blob/master/skynet-src/skynet_server.c#L299-L301
+		-1 处理一条
+		0  处理所有
+		1  处理一半
+		2  处理四分之一
+		3  处理八分之一
+	*/
 	static int weight[] = { 
 		-1, -1, -1, -1, 0, 0, 0, 0,
 		1, 1, 1, 1, 1, 1, 1, 1, 
