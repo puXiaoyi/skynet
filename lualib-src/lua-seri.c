@@ -17,15 +17,15 @@
 #define TYPE_NUMBER 2
 // hibits 0 : 0 , 1: byte, 2:word, 4: dword, 6: qword, 8 : double
 /*
-	Êı×ÖĞÍ£¬Í¨¹ı TYPE_NUMBER ºÍ ×ÓÀàĞÍ ¼ÆËã¸´ºÏÀàĞÍ
+	æ•°å­—å‹ï¼Œé€šè¿‡ TYPE_NUMBER å’Œ å­ç±»å‹ è®¡ç®—å¤åˆç±»å‹
 	COMBINE_TYPE(t,v) ((t) | (v) << 3)
 	
 	TYPE_NUMBER_ZERO	0
-	TYPE_NUMBER_BYTE	8Î»ÎŞ·ûºÅÕûÊı
-	TYPE_NUMBER_WORD 	16Î»ÎŞ·ûºÅÕûÊı
-	TYPE_NUMBER_DWORD	32Î»ÕûÊı
-	TYPE_NUMBER_QWORD	64Î»ÕûÊı
-	TYPE_NUMBER_REAL 	Ë«¾«¶È¸¡µãÊı
+	TYPE_NUMBER_BYTE	8ä½æ— ç¬¦å·æ•´æ•°
+	TYPE_NUMBER_WORD 	16ä½æ— ç¬¦å·æ•´æ•°
+	TYPE_NUMBER_DWORD	32ä½æ•´æ•°
+	TYPE_NUMBER_QWORD	64ä½æ•´æ•°
+	TYPE_NUMBER_REAL 	åŒç²¾åº¦æµ®ç‚¹æ•°
 */
 #define TYPE_NUMBER_ZERO 0
 #define TYPE_NUMBER_BYTE 1
@@ -36,7 +36,7 @@
 
 #define TYPE_USERDATA 3
 /*
-	×Ö·û´®ÀàĞÍ£¬¾ßÌå²»Í¬¼ûwb_string
+	å­—ç¬¦ä¸²ç±»å‹ï¼Œå…·ä½“ä¸åŒè§wb_string
 */
 #define TYPE_SHORT_STRING 4	
 // hibits 0~31 : len
@@ -49,37 +49,37 @@
 #define BLOCK_SIZE 128
 #define MAX_DEPTH 32
 
-// Ğ´»º³åÇø¿é
+// å†™ç¼“å†²åŒºå—
 struct block {
-	struct block * next;		// ÏÂÒ»¿éÖ¸Õë
-	char buffer[BLOCK_SIZE];	// »º³åÇøÊı¾İ
+	struct block * next;		// ä¸‹ä¸€å—æŒ‡é’ˆ
+	char buffer[BLOCK_SIZE];	// ç¼“å†²åŒºæ•°æ®
 };
 
-// Ğ´»º³åÇøÁ´±í
+// å†™ç¼“å†²åŒºé“¾è¡¨
 struct write_block {
-	struct block * head;		// Í·²¿¿éÖ¸Õë
-	struct block * current;		// µ±Ç°¿éÖ¸Õë
-	int len;					// ÒÑ¶ÁÊı¾İ³¤¶È
-	int ptr;					// Ö¸ÕëÆ«ÒÆ´óĞ¡
+	struct block * head;		// å¤´éƒ¨å—æŒ‡é’ˆ
+	struct block * current;		// å½“å‰å—æŒ‡é’ˆ
+	int len;					// å·²è¯»æ•°æ®é•¿åº¦
+	int ptr;					// æŒ‡é’ˆåç§»å¤§å°
 };
 
-// ¶Á»º³åÇø¿é
+// è¯»ç¼“å†²åŒºå—
 struct read_block {
-	char * buffer;				// Êı¾İ»º³åÇø
-	int len;					// ÒÑ¶ÁÊı¾İ³¤¶È
-	int ptr;					// Ö¸ÕëÆ«ÒÆ´óĞ¡
+	char * buffer;				// æ•°æ®ç¼“å†²åŒº
+	int len;					// å·²è¯»æ•°æ®é•¿åº¦
+	int ptr;					// æŒ‡é’ˆåç§»å¤§å°
 };
 
-// ·ÖÅäĞ´»º³åÇø¿éÄÚ´æ
+// åˆ†é…å†™ç¼“å†²åŒºå—å†…å­˜
 inline static struct block *
 blk_alloc(void) {
-	// ³ıÁËµÚÒ»¸ö»º³åÇø¿éÔÚÕ»ÉÏ£¬ÆäËûÊÖ¶¯·ÖÅä¶ÑÄÚ´æ
+	// é™¤äº†ç¬¬ä¸€ä¸ªç¼“å†²åŒºå—åœ¨æ ˆä¸Šï¼Œå…¶ä»–æ‰‹åŠ¨åˆ†é…å †å†…å­˜
 	struct block *b = skynet_malloc(sizeof(struct block));
 	b->next = NULL;
 	return b;
 }
 
-// ¼ÓÈëĞ´»º³åÇø
+// åŠ å…¥å†™ç¼“å†²åŒº
 inline static void
 wb_push(struct write_block *b, const void *buf, int sz) {
 	const char * buffer = buf;
@@ -89,14 +89,14 @@ _again:
 		b->ptr = 0;
 	}
 	if (b->ptr <= BLOCK_SIZE - sz) {
-		// Èç¹ûµ±Ç°»º³åÇø×ã¹»Ğ´ÈëÊı¾İ
+		// å¦‚æœå½“å‰ç¼“å†²åŒºè¶³å¤Ÿå†™å…¥æ•°æ®
 		memcpy(b->current->buffer + b->ptr, buffer, sz);
 		b->ptr+=sz;
 		b->len+=sz;
 	} else {
-		// Èç¹ûµ±Ç°»º³åÇø²»¹»Ğ´ÈëÊı¾İ
+		// å¦‚æœå½“å‰ç¼“å†²åŒºä¸å¤Ÿå†™å…¥æ•°æ®
 		int copy = BLOCK_SIZE - b->ptr;
-		// °Ñµ±Ç°»º³åÇøĞ´Âú£¬¼ÌĞøÍùÏÂÒ»¸ö»º³åÇøĞ´
+		// æŠŠå½“å‰ç¼“å†²åŒºå†™æ»¡ï¼Œç»§ç»­å¾€ä¸‹ä¸€ä¸ªç¼“å†²åŒºå†™
 		memcpy(b->current->buffer + b->ptr, buffer, copy);
 		buffer += copy;
 		b->len += copy;
@@ -105,7 +105,7 @@ _again:
 	}
 }
 
-// ³õÊ¼»¯Ğ´»º³åÇøÁ´±í
+// åˆå§‹åŒ–å†™ç¼“å†²åŒºé“¾è¡¨
 static void
 wb_init(struct write_block *wb , struct block *b) {
 	wb->head = b;
@@ -115,11 +115,11 @@ wb_init(struct write_block *wb , struct block *b) {
 	wb->ptr = 0;
 }
 
-// ÊÍ·ÅĞ´»º³åÇøÁ´±í
+// é‡Šæ”¾å†™ç¼“å†²åŒºé“¾è¡¨
 static void
 wb_free(struct write_block *wb) {
 	struct block *blk = wb->head;
-	// µÚÒ»¸ö»º³åÇø¿éÔÚÕ»ÉÏ
+	// ç¬¬ä¸€ä¸ªç¼“å†²åŒºå—åœ¨æ ˆä¸Š
 	blk = blk->next;	// the first block is on stack
 	while (blk) {
 		struct block * next = blk->next;
@@ -132,7 +132,7 @@ wb_free(struct write_block *wb) {
 	wb->len = 0;
 }
 
-// ³õÊ¼»¯¶Á»º³åÇø¿é
+// åˆå§‹åŒ–è¯»ç¼“å†²åŒºå—
 static void
 rball_init(struct read_block * rb, char * buffer, int size) {
 	rb->buffer = buffer;
@@ -140,7 +140,7 @@ rball_init(struct read_block * rb, char * buffer, int size) {
 	rb->ptr = 0;
 }
 
-// ¶ÁÌØ¶¨³¤¶È¶Á»º³åÇø¿éÊı¾İ
+// è¯»ç‰¹å®šé•¿åº¦è¯»ç¼“å†²åŒºå—æ•°æ®
 static void *
 rb_read(struct read_block *rb, int sz) {
 	if (rb->len < sz) {
@@ -153,55 +153,55 @@ rb_read(struct read_block *rb, int sz) {
 	return rb->buffer + ptr;
 }
 
-// Ğ´ÈënilÊı¾İ
+// å†™å…¥nilæ•°æ®
 static inline void
 wb_nil(struct write_block *wb) {
 	uint8_t n = TYPE_NIL;
 	wb_push(wb, &n, 1);
 }
 
-// Ğ´ÈëbooleanÊı¾İ
+// å†™å…¥booleanæ•°æ®
 static inline void
 wb_boolean(struct write_block *wb, int boolean) {
-	// Èç¹ûÕæ£¬ºÍ1ºÏ²¢ÀàĞÍ²¢Ğ´Èë¡£·ñÔò£¬ºÍ0ºÏ²¢ÀàĞÍ²¢Ğ´Èë¡£
+	// å¦‚æœçœŸï¼Œå’Œ1åˆå¹¶ç±»å‹å¹¶å†™å…¥ã€‚å¦åˆ™ï¼Œå’Œ0åˆå¹¶ç±»å‹å¹¶å†™å…¥ã€‚
 	uint8_t n = COMBINE_TYPE(TYPE_BOOLEAN , boolean ? 1 : 0);
 	wb_push(wb, &n, 1);
 }
 
-// Ğ´ÈëintegerÕûÊı
+// å†™å…¥integeræ•´æ•°
 static inline void
 wb_integer(struct write_block *wb, lua_Integer v) {
 	int type = TYPE_NUMBER;
 	if (v == 0) {
-		// Ğ´Èë0£¬Ö»ĞèÒªĞ´ÈëÀàĞÍÍ·
+		// å†™å…¥0ï¼Œåªéœ€è¦å†™å…¥ç±»å‹å¤´
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_ZERO);
 		wb_push(wb, &n, 1);
 	} else if (v != (int32_t)v) {
-		// Ğ´Èë64Î»ÕûÊı
+		// å†™å…¥64ä½æ•´æ•°
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_QWORD);
 		int64_t v64 = v;
 		wb_push(wb, &n, 1);
 		wb_push(wb, &v64, sizeof(v64));
 	} else if (v < 0) {
-		// Ğ´Èë32Î»¸ºÕûÊı
+		// å†™å…¥32ä½è´Ÿæ•´æ•°
 		int32_t v32 = (int32_t)v;
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_DWORD);
 		wb_push(wb, &n, 1);
 		wb_push(wb, &v32, sizeof(v32));
 	} else if (v<0x100) {
-		// Ğ´Èë8Î»ÎŞ·ûºÅÕûÊı
+		// å†™å…¥8ä½æ— ç¬¦å·æ•´æ•°
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_BYTE);
 		wb_push(wb, &n, 1);
 		uint8_t byte = (uint8_t)v;
 		wb_push(wb, &byte, sizeof(byte));
 	} else if (v<0x10000) {
-		// Ğ´Èë16Î»ÎŞ·ûºÅÕûÊı
+		// å†™å…¥16ä½æ— ç¬¦å·æ•´æ•°
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_WORD);
 		wb_push(wb, &n, 1);
 		uint16_t word = (uint16_t)v;
 		wb_push(wb, &word, sizeof(word));
 	} else {
-		// Ğ´Èë32Î»ÕıÕûÊı
+		// å†™å…¥32ä½æ­£æ•´æ•°
 		uint8_t n = COMBINE_TYPE(type , TYPE_NUMBER_DWORD);
 		wb_push(wb, &n, 1);
 		uint32_t v32 = (uint32_t)v;
@@ -209,7 +209,7 @@ wb_integer(struct write_block *wb, lua_Integer v) {
 	}
 }
 
-// Ğ´ÈëË«¾«¶È¸¡µãÊı
+// å†™å…¥åŒç²¾åº¦æµ®ç‚¹æ•°
 static inline void
 wb_real(struct write_block *wb, double v) {
 	uint8_t n = COMBINE_TYPE(TYPE_NUMBER , TYPE_NUMBER_REAL);
@@ -217,7 +217,7 @@ wb_real(struct write_block *wb, double v) {
 	wb_push(wb, &v, sizeof(v));
 }
 
-// Ğ´ÈëÓÃ»§Êı¾İÖ¸ÕëµØÖ·
+// å†™å…¥ç”¨æˆ·æ•°æ®æŒ‡é’ˆåœ°å€
 static inline void
 wb_pointer(struct write_block *wb, void *v) {
 	uint8_t n = TYPE_USERDATA;
@@ -225,17 +225,17 @@ wb_pointer(struct write_block *wb, void *v) {
 	wb_push(wb, &v, sizeof(v));
 }
 
-// Ğ´Èë×Ö·û´®
+// å†™å…¥å­—ç¬¦ä¸²
 static inline void
 wb_string(struct write_block *wb, const char *str, int len) {
 	/*
-		×Ö·û´®Ò²ÊÇ¸´ºÏÀàĞÍ
-		Èç¹ûÊÇ¶Ì×Ö·û´®TYPE_SHORT_STRING£¬ºÍ³¤¶ÈlenºÏ²¢ÀàĞÍ²¢Ğ´Èë
-		Èç¹ûÊÇ³¤×Ö·û´®TYPE_LONG_STRING£¬ÔÙ¸ù¾İ³¤¶ÈlenÅĞ¶Ï¡£Èç¹û³¤¶ÈÉÙÓÚ64K£¬ºÍ2ºÏ²¢ÀàĞÍ²¢Ğ´Èë¡£·ñÔò£¬ºÍ4ºÏ²¢ÀàĞÍ²¢Ğ´Èë¡£
-		Èç¹ûÊÇ³¤×Ö·û´®TYPE_LONG_STRING£¬»¹Òª°Ñ³¤¶ÈlenÔÚÀàĞÍÖ®ºóĞ´Èë»º³åÇø
+		å­—ç¬¦ä¸²ä¹Ÿæ˜¯å¤åˆç±»å‹
+		å¦‚æœæ˜¯çŸ­å­—ç¬¦ä¸²TYPE_SHORT_STRINGï¼Œå’Œé•¿åº¦lenåˆå¹¶ç±»å‹å¹¶å†™å…¥
+		å¦‚æœæ˜¯é•¿å­—ç¬¦ä¸²TYPE_LONG_STRINGï¼Œå†æ ¹æ®é•¿åº¦lenåˆ¤æ–­ã€‚å¦‚æœé•¿åº¦å°‘äº64Kï¼Œå’Œ2åˆå¹¶ç±»å‹å¹¶å†™å…¥ã€‚å¦åˆ™ï¼Œå’Œ4åˆå¹¶ç±»å‹å¹¶å†™å…¥ã€‚
+		å¦‚æœæ˜¯é•¿å­—ç¬¦ä¸²TYPE_LONG_STRINGï¼Œè¿˜è¦æŠŠé•¿åº¦lenåœ¨ç±»å‹ä¹‹åå†™å…¥ç¼“å†²åŒº
 	*/
 	if (len < MAX_COOKIE) {
-		// Èç¹û³¤¶ÈĞ¡ÓÚ32
+		// å¦‚æœé•¿åº¦å°äº32
 		uint8_t n = COMBINE_TYPE(TYPE_SHORT_STRING, len);
 		wb_push(wb, &n, 1);
 		if (len > 0) {
@@ -244,13 +244,13 @@ wb_string(struct write_block *wb, const char *str, int len) {
 	} else {
 		uint8_t n;
 		if (len < 0x10000) {
-			// Èç¹û³¤¶ÈÉÙÓÚ64K
+			// å¦‚æœé•¿åº¦å°‘äº64K
 			n = COMBINE_TYPE(TYPE_LONG_STRING, 2);
 			wb_push(wb, &n, 1);
 			uint16_t x = (uint16_t) len;
 			wb_push(wb, &x, 2);
 		} else {
-			// Èç¹û³¤¶È³¬¹ı64K
+			// å¦‚æœé•¿åº¦è¶…è¿‡64K
 			n = COMBINE_TYPE(TYPE_LONG_STRING, 4);
 			wb_push(wb, &n, 1);
 			uint32_t x = (uint32_t) len;
@@ -262,30 +262,30 @@ wb_string(struct write_block *wb, const char *str, int len) {
 
 static void pack_one(lua_State *L, struct write_block *b, int index, int depth);
 
-// Ğ´ÈëÊı×étable
+// å†™å…¥æ•°ç»„table
 static int
 wb_table_array(lua_State *L, struct write_block * wb, int index, int depth) {
-	// »ñÈ¡Êı×é³¤¶È
+	// è·å–æ•°ç»„é•¿åº¦
 	int array_size = lua_rawlen(L,index);
 	if (array_size >= MAX_COOKIE-1) {
-		// Èç¹ûÊı×é³¤¶È³¬¹ı31
-		// °Ñ31ºÏ²¢ÀàĞÍ²¢Ğ´Èë£¬ÔÙĞ´ÈëÊı×é³¤¶È
+		// å¦‚æœæ•°ç»„é•¿åº¦è¶…è¿‡31
+		// æŠŠ31åˆå¹¶ç±»å‹å¹¶å†™å…¥ï¼Œå†å†™å…¥æ•°ç»„é•¿åº¦
 		uint8_t n = COMBINE_TYPE(TYPE_TABLE, MAX_COOKIE-1);
 		wb_push(wb, &n, 1);
 		wb_integer(wb, array_size);
 	} else {
-		// Èç¹ûÊı×é³¤¶ÈĞ¡ÓÚ31
-		// °ÑÊı×é³¤¶ÈºÏ²¢ÀàĞÍ²¢Ğ´Èë
+		// å¦‚æœæ•°ç»„é•¿åº¦å°äº31
+		// æŠŠæ•°ç»„é•¿åº¦åˆå¹¶ç±»å‹å¹¶å†™å…¥
 		uint8_t n = COMBINE_TYPE(TYPE_TABLE, array_size);
 		wb_push(wb, &n, 1);
 	}
 
 	int i;
-	// ±éÀúÊı×éÔªËØ²¢Ğ´Èë
+	// éå†æ•°ç»„å…ƒç´ å¹¶å†™å…¥
 	for (i=1;i<=array_size;i++) {
-		// °ÑÊı×éÔªËØÑ¹Õ»
+		// æŠŠæ•°ç»„å…ƒç´ å‹æ ˆ
 		lua_rawgeti(L,index,i);
-		// µİ¹é¶ÁÈ¡
+		// é€’å½’è¯»å–
 		pack_one(L, wb, -1, depth);
 		lua_pop(L,1);
 	}
@@ -293,42 +293,42 @@ wb_table_array(lua_State *L, struct write_block * wb, int index, int depth) {
 	return array_size;
 }
 
-// Ğ´Èë¹şÏ£table
+// å†™å…¥å“ˆå¸Œtable
 static void
 wb_table_hash(lua_State *L, struct write_block * wb, int index, int depth, int array_size) {
-	// ÏÈ°ÑnilÑ¹Õ»£¬×÷ÎªµÚÒ»¸ö¼ü
+	// å…ˆæŠŠnilå‹æ ˆï¼Œä½œä¸ºç¬¬ä¸€ä¸ªé”®
 	lua_pushnil(L);
 	while (lua_next(L, index) != 0) {
-		// ´ÓÕ»¶¥µ¯³öÒ»¸ö¼ü£¬ È»ºó°ÑË÷ÒıÖ¸¶¨µÄ±íÖĞµÄÒ»¸ö¼üÖµ¶ÔÑ¹Õ» £¨µ¯³öµÄ¼üÖ®ºóµÄ ¡°ÏÂÒ»¡± ¶Ô£©
-		// ÏÈÑ¹¼üºóÑ¹Öµ£¬-2ÊÇ¼ü£¬-1ÊÇÖµ
+		// ä»æ ˆé¡¶å¼¹å‡ºä¸€ä¸ªé”®ï¼Œ ç„¶åæŠŠç´¢å¼•æŒ‡å®šçš„è¡¨ä¸­çš„ä¸€ä¸ªé”®å€¼å¯¹å‹æ ˆ ï¼ˆå¼¹å‡ºçš„é”®ä¹‹åçš„ â€œä¸‹ä¸€â€ å¯¹ï¼‰
+		// å…ˆå‹é”®åå‹å€¼ï¼Œ-2æ˜¯é”®ï¼Œ-1æ˜¯å€¼
 		if (lua_type(L,-2) == LUA_TNUMBER) {
 			if (lua_isinteger(L, -2)) {
-				// Èç¹ûÊÇÊı×Ö¼ü
+				// å¦‚æœæ˜¯æ•°å­—é”®
 				lua_Integer x = lua_tointeger(L,-2);
 				if (x>0 && x<=array_size) {
-					// Èç¹ûĞ¡ÓÚÊı×é³¤¶È£¬ÒÑ¾­ÔÚwb_table_arrayĞ´Èë¹ı£¬ËùÒÔµ¯³öÕ»²»ÔÙ×ö´¦Àí
+					// å¦‚æœå°äºæ•°ç»„é•¿åº¦ï¼Œå·²ç»åœ¨wb_table_arrayå†™å…¥è¿‡ï¼Œæ‰€ä»¥å¼¹å‡ºæ ˆä¸å†åšå¤„ç†
 					lua_pop(L,1);
 					continue;
 				}
 			}
 		}
-		// ·Ö±ğ¶Ô¼üÖµ½øĞĞµİ¹éĞ´Èë
+		// åˆ†åˆ«å¯¹é”®å€¼è¿›è¡Œé€’å½’å†™å…¥
 		pack_one(L,wb,-2,depth);
 		pack_one(L,wb,-1,depth);
-		// °ÑÖµµ¯³öÕ»£¬±£Áô¼ü×÷ÎªÏÂÒ»´Îlua_next²ÎÊı
+		// æŠŠå€¼å¼¹å‡ºæ ˆï¼Œä¿ç•™é”®ä½œä¸ºä¸‹ä¸€æ¬¡lua_nextå‚æ•°
 		lua_pop(L, 1);
 	}
-	// ×îºóÔÙĞ´Èënil£¬×÷Îª½áÊø±êÊ¶Î»
+	// æœ€åå†å†™å…¥nilï¼Œä½œä¸ºç»“æŸæ ‡è¯†ä½
 	wb_nil(wb);
 }
 
-// Ğ´ÈëÔªtable
+// å†™å…¥å…ƒtable
 static void
 wb_table_metapairs(lua_State *L, struct write_block *wb, int index, int depth) {
-	// °Ñ0ºÏ²¢ÀàĞÍ²¢Ğ´Èë
+	// æŠŠ0åˆå¹¶ç±»å‹å¹¶å†™å…¥
 	uint8_t n = COMBINE_TYPE(TYPE_TABLE, 0);
 	wb_push(wb, &n, 1);
-	// °Ñ±í¸´ÖÆÒ»·İ
+	// æŠŠè¡¨å¤åˆ¶ä¸€ä»½
 	lua_pushvalue(L, index);
 	/*
 		function meta.__pairs(t)
@@ -345,90 +345,90 @@ wb_table_metapairs(lua_State *L, struct write_block *wb, int index, int depth) {
 		  end, t, nil
 		end
 	
-		Ö´ĞĞ__pairsÔª·½·¨£¬¼´pairs(t)
-		·µ»Ø3¸ö²ÎÊı£¬nextº¯Êı£¬±ít£¬ÒÔ¼°nil
-		for k,v in pairs(t) do body end ¾Í¿ÉÒÔµü´ú±ítÖĞµÄËùÓĞ¼üÖµ¶Ô
+		æ‰§è¡Œ__pairså…ƒæ–¹æ³•ï¼Œå³pairs(t)
+		è¿”å›3ä¸ªå‚æ•°ï¼Œnextå‡½æ•°ï¼Œè¡¨tï¼Œä»¥åŠnil
+		for k,v in pairs(t) do body end å°±å¯ä»¥è¿­ä»£è¡¨tä¸­çš„æ‰€æœ‰é”®å€¼å¯¹
 
 	*/
 	lua_call(L, 1, 3);
 	/*
-		Ö´ĞĞÍêlua_call(L, 1, 3)ºó£¬Õ»ÉÏµÄÔªËØ
+		æ‰§è¡Œå®Œlua_call(L, 1, 3)åï¼Œæ ˆä¸Šçš„å…ƒç´ 
 		-1 nil
-		-2 ±ít
-		-3 nextº¯Êı
+		-2 è¡¨t
+		-3 nextå‡½æ•°
 	*/
 	for(;;) {
 		lua_pushvalue(L, -2);
 		lua_pushvalue(L, -2);
 		/*
-			Ö´ĞĞÍêÁ½±élua_pushvalue(L, -2)ºó£¬Õ»ÉÏµÄÔªËØ
-			-1 k(µÚÒ»´ÎÑ­»·Îªnil)
-			-2 ±ít
-			-3 k(µÚÒ»´ÎÑ­»·Îªnil)
-			-4 ±ít	
-			-5 nextº¯Êı
+			æ‰§è¡Œå®Œä¸¤élua_pushvalue(L, -2)åï¼Œæ ˆä¸Šçš„å…ƒç´ 
+			-1 k(ç¬¬ä¸€æ¬¡å¾ªç¯ä¸ºnil)
+			-2 è¡¨t
+			-3 k(ç¬¬ä¸€æ¬¡å¾ªç¯ä¸ºnil)
+			-4 è¡¨t	
+			-5 nextå‡½æ•°
 		*/
 		lua_copy(L, -5, -3);
 		/*
-			Ö´ĞĞÍêlua_copy(L, -5, -3)ºó£¬Õ»ÉÏµÄÔªËØ
-			-1 k(µÚÒ»´ÎÑ­»·Îªnil)
-			-2 ±ít
-			-3 nextº¯Êı
-			-4 ±ít	
-			-5 nextº¯Êı
+			æ‰§è¡Œå®Œlua_copy(L, -5, -3)åï¼Œæ ˆä¸Šçš„å…ƒç´ 
+			-1 k(ç¬¬ä¸€æ¬¡å¾ªç¯ä¸ºnil)
+			-2 è¡¨t
+			-3 nextå‡½æ•°
+			-4 è¡¨t	
+			-5 nextå‡½æ•°
 		*/
-		// Ö´ĞĞnext(table[,index])º¯Êı£¬·µ»Øindex¼üÏÂÒ»¸ö¼üÖµ¶Ô
-		// indexÎªnil£¬·µ»ØtableµÄ³õÊ¼¼üÖµ¶Ô
+		// æ‰§è¡Œnext(table[,index])å‡½æ•°ï¼Œè¿”å›indexé”®ä¸‹ä¸€ä¸ªé”®å€¼å¯¹
+		// indexä¸ºnilï¼Œè¿”å›tableçš„åˆå§‹é”®å€¼å¯¹
 		lua_call(L, 2, 2);		
 		/*
-			Ö´ĞĞÍêlua_call(L, 2, 2)ºó£¬Õ»ÉÏµÄÔªËØ
+			æ‰§è¡Œå®Œlua_call(L, 2, 2)åï¼Œæ ˆä¸Šçš„å…ƒç´ 
 			-1 v
 			-2 k 
-			-3 ±ít	
-			-4 nextº¯Êı
+			-3 è¡¨t	
+			-4 nextå‡½æ•°
 		*/
 		int type = lua_type(L, -2);
 		if (type == LUA_TNIL) {
-			// Èç¹û·µ»ØµÄ¼üÎª¿Õ£¬Çå¿ÕÕ»¶¥
+			// å¦‚æœè¿”å›çš„é”®ä¸ºç©ºï¼Œæ¸…ç©ºæ ˆé¡¶
 			lua_pop(L, 4);
 			break;
 		}
-		// µİ¹éĞ´Èë¼ü
+		// é€’å½’å†™å…¥é”®
 		pack_one(L, wb, -2, depth);
-		// µİ¹éĞ´ÈëÖµ
+		// é€’å½’å†™å…¥å€¼
 		pack_one(L, wb, -1, depth);
-		// °Ñvµ¯³öÕ»£¬±£Áôk×÷ÎªÏÂÒ»´Înext²ÎÊı
+		// æŠŠvå¼¹å‡ºæ ˆï¼Œä¿ç•™kä½œä¸ºä¸‹ä¸€æ¬¡nextå‚æ•°
 		lua_pop(L, 1);	
 		/*
-			Ö´ĞĞÍêlua_pop(L, 1)ºó£¬Õ»ÉÏµÄÔªËØ
+			æ‰§è¡Œå®Œlua_pop(L, 1)åï¼Œæ ˆä¸Šçš„å…ƒç´ 
 			-1 k 
-			-2 ±ít	
-			-3 nextº¯Êı
+			-2 è¡¨t	
+			-3 nextå‡½æ•°
 		*/
 	}
-	// ×îºóÔÙĞ´Èënil£¬×÷Îª½áÊø±êÊ¶Î»
+	// æœ€åå†å†™å…¥nilï¼Œä½œä¸ºç»“æŸæ ‡è¯†ä½
 	wb_nil(wb);
 }
 
-// Ğ´Èëtable
+// å†™å…¥table
 static void
 wb_table(lua_State *L, struct write_block *wb, int index, int depth) {
 	luaL_checkstack(L, LUA_MINSTACK, NULL);
 	if (index < 0) {
-		// ¸ºË÷Òı×ª»¯ÎªÕıË÷Òı
+		// è´Ÿç´¢å¼•è½¬åŒ–ä¸ºæ­£ç´¢å¼•
 		index = lua_gettop(L) + index + 1;
 	}
 	if (luaL_getmetafield(L, index, "__pairs") != LUA_TNIL) {
-		// Èç¹ûtableÓĞ__pairsÔª·½·¨£¬°Ñ__pairsÔª·½·¨Ñ¹Õ»
+		// å¦‚æœtableæœ‰__pairså…ƒæ–¹æ³•ï¼ŒæŠŠ__pairså…ƒæ–¹æ³•å‹æ ˆ
 		wb_table_metapairs(L, wb, index, depth);
 	} else {
-		// ·ñÔòÏÈĞ´Êı×étable£¬ºóĞ´¹şÏ£table
+		// å¦åˆ™å…ˆå†™æ•°ç»„tableï¼Œåå†™å“ˆå¸Œtable
 		int array_size = wb_table_array(L, wb, index, depth);
 		wb_table_hash(L, wb, index, depth, array_size);
 	}
 }
 
-// packÖ÷º¯Êı
+// packä¸»å‡½æ•°
 static void
 pack_one(lua_State *L, struct write_block *b, int index, int depth) {
 	if (depth > MAX_DEPTH) {
@@ -479,7 +479,7 @@ static void
 pack_from(lua_State *L, struct write_block *b, int from) {
 	int n = lua_gettop(L) - from;
 	int i;
-	// ±éÀúluaÕ»£¬ÕıË÷Òı´ÓµÍµ½¸ß£¬ÒÀ´ÎĞ´Èë
+	// éå†luaæ ˆï¼Œæ­£ç´¢å¼•ä»ä½åˆ°é«˜ï¼Œä¾æ¬¡å†™å…¥
 	for (i=1;i<=n;i++) {
 		pack_one(L, b , from + i, 0);
 	}
@@ -571,7 +571,7 @@ static void unpack_one(lua_State *L, struct read_block *rb);
 static void
 unpack_table(lua_State *L, struct read_block *rb, int array_size) {
 	if (array_size == MAX_COOKIE-1) {
-		// ÕæÊµÊı×é³¤¶È£¬ÊÇÒ»¸öÊı×ÖÀàĞÍ
+		// çœŸå®æ•°ç»„é•¿åº¦ï¼Œæ˜¯ä¸€ä¸ªæ•°å­—ç±»å‹
 		uint8_t type;
 		uint8_t *t = rb_read(rb, sizeof(type));
 		if (t==NULL) {
@@ -579,32 +579,32 @@ unpack_table(lua_State *L, struct read_block *rb, int array_size) {
 		}
 		type = *t;
 		int cookie = type >> 3;
-		// ·Ç¸¡µãÊıµÄÊı×ÖĞÍ
+		// éæµ®ç‚¹æ•°çš„æ•°å­—å‹
 		if ((type & 7) != TYPE_NUMBER || cookie == TYPE_NUMBER_REAL) {
 			invalid_stream(L,rb);
 		}
-		// »ñÈ¡ÕæÊµÊı×é³¤¶È
+		// è·å–çœŸå®æ•°ç»„é•¿åº¦
 		array_size = get_integer(L,rb,cookie);
 	}
 	luaL_checkstack(L,LUA_MINSTACK,NULL);
-	// ´´½¨Ò»ÕÅĞÂµÄlua±í
+	// åˆ›å»ºä¸€å¼ æ–°çš„luaè¡¨
 	lua_createtable(L,array_size,0);
 	int i;
-	// ±éÀúÊı×éÔªËØ
+	// éå†æ•°ç»„å…ƒç´ 
 	for (i=1;i<=array_size;i++) {
 		unpack_one(L,rb);
 		lua_rawseti(L,-2,i);
 	}
-	// ±éÀú¼üÖµ¶Ô
+	// éå†é”®å€¼å¯¹
 	for (;;) {
-		// ¼ü
+		// é”®
 		unpack_one(L,rb);
 		if (lua_isnil(L,-1)) {
-			// Èç¹û¼üÎª¿Õ£¬±éÀú½áÊø
+			// å¦‚æœé”®ä¸ºç©ºï¼Œéå†ç»“æŸ
 			lua_pop(L,1);
 			return;
 		}
-		// Öµ
+		// å€¼
 		unpack_one(L,rb);
 		lua_rawset(L,-3);
 	}
@@ -679,11 +679,11 @@ unpack_one(lua_State *L, struct read_block *rb) {
 
 static void
 seri(lua_State *L, struct block *b, int len) {
-	// ´´½¨ĞÂµÄ»º³åÇø
+	// åˆ›å»ºæ–°çš„ç¼“å†²åŒº
 	uint8_t * buffer = skynet_malloc(len);
 	uint8_t * ptr = buffer;
 	int sz = len;
-	// ±éÀúĞ´»º³åÇø¿é£¬¸´ÖÆÊı¾İµ½ĞÂ»º³åÇø
+	// éå†å†™ç¼“å†²åŒºå—ï¼Œå¤åˆ¶æ•°æ®åˆ°æ–°ç¼“å†²åŒº
 	while(len>0) {
 		if (len >= BLOCK_SIZE) {
 			memcpy(ptr, b->buffer, BLOCK_SIZE);
@@ -696,7 +696,7 @@ seri(lua_State *L, struct block *b, int len) {
 		}
 	}
 
-	// °ÑĞÂµÄ»º³åÇøµÄÖ¸ÕëºÍ´óĞ¡Ñ¹Õ»×÷Îªlua·µ»ØÖµ
+	// æŠŠæ–°çš„ç¼“å†²åŒºçš„æŒ‡é’ˆå’Œå¤§å°å‹æ ˆä½œä¸ºluaè¿”å›å€¼
 	lua_pushlightuserdata(L, buffer);
 	lua_pushinteger(L, sz);
 }
@@ -727,9 +727,9 @@ luaseri_unpack(lua_State *L) {
 		return luaL_error(L, "deserialize null pointer");
 	}
 
-	// ÈÃ»º³åÇøÊı¾İÔÚÕ»¶¥
+	// è®©ç¼“å†²åŒºæ•°æ®åœ¨æ ˆé¡¶
 	lua_settop(L,1);
-	// ¶Á»º³åÇø³õÊ¼»¯
+	// è¯»ç¼“å†²åŒºåˆå§‹åŒ–
 	struct read_block rb;
 	rball_init(&rb, buffer, len);
 
@@ -737,7 +737,7 @@ luaseri_unpack(lua_State *L) {
 	for (i=0;;i++) {
 		// ?
 		if (i%8==7) {
-			// LUA_MINSTACK Ò»°ã¶¨ÒåÎª20
+			// LUA_MINSTACK ä¸€èˆ¬å®šä¹‰ä¸º20
 			luaL_checkstack(L,LUA_MINSTACK,NULL);
 		}
 		uint8_t type = 0;
@@ -746,22 +746,22 @@ luaseri_unpack(lua_State *L) {
 			break;
 		type = *t;
 		/*
-			type & 0x7 Ö»±£ÁôµÍÈıÎ»£¬»ñµÃÒ»¼¶ÀàĞÍ type
-			type >> 3 Ö»±£Áô¸ßÎåÎ»£¬»ñµÃ¶ş¼¶ÀàĞÍ cookie
+			type & 0x7 åªä¿ç•™ä½ä¸‰ä½ï¼Œè·å¾—ä¸€çº§ç±»å‹ type
+			type >> 3 åªä¿ç•™é«˜äº”ä½ï¼Œè·å¾—äºŒçº§ç±»å‹ cookie
 		*/
 		push_value(L, &rb, type & 0x7, type>>3);
 	}
 
 	// Need not free buffer
-	// ÎªÊ²Ã´²»ĞèÒªÊÍ·Å»º³åÇø?
-	// ÒòÎªÓÉ¿ò¼ÜÔÚ»Øµ÷ÍêÓÃ»§×¢²áµÄ·şÎñcallbackº¯ÊıºóÊÍ·Å£¬ÎŞĞèÓÉÓÃ»§´úÂëÈ¥ÊÖ¶¯ÊÍ·ÅÄÚ´æ
+	// ä¸ºä»€ä¹ˆä¸éœ€è¦é‡Šæ”¾ç¼“å†²åŒº?
+	// å› ä¸ºç”±æ¡†æ¶åœ¨å›è°ƒå®Œç”¨æˆ·æ³¨å†Œçš„æœåŠ¡callbackå‡½æ•°åé‡Šæ”¾ï¼Œæ— éœ€ç”±ç”¨æˆ·ä»£ç å»æ‰‹åŠ¨é‡Šæ”¾å†…å­˜
 	/*		
 		if (!ctx->cb(ctx, ctx->cb_ud, type, msg->session, msg->source, msg->data, sz)) {
 			skynet_free(msg->data);
 		} 
 	*/
 	
-	// »º³åÇøbufferÔÚÕ»µ×£¬ËùÒÔ·µ»Ø²ÎÊıÊıÁ¿ĞèÒª-1
+	// ç¼“å†²åŒºbufferåœ¨æ ˆåº•ï¼Œæ‰€ä»¥è¿”å›å‚æ•°æ•°é‡éœ€è¦-1
 	return lua_gettop(L) - 1;
 }
 
@@ -769,18 +769,18 @@ luaseri_unpack(lua_State *L) {
 // skynet.pack
 int
 luaseri_pack(lua_State *L) {
-	// ÉùÃ÷µÚÒ»¸ö¿é±äÁ¿£¬±àÒëÆ÷ÎªÊı¾İ»º³å·ÖÅäÕ»ÄÚ´æ
+	// å£°æ˜ç¬¬ä¸€ä¸ªå—å˜é‡ï¼Œç¼–è¯‘å™¨ä¸ºæ•°æ®ç¼“å†²åˆ†é…æ ˆå†…å­˜
 	struct block temp;
 	temp.next = NULL;
 	struct write_block wb;
-	// ³õÊ¼»¯Ğ´»º³åÇøÁ´±í
+	// åˆå§‹åŒ–å†™ç¼“å†²åŒºé“¾è¡¨
 	wb_init(&wb, &temp);
-	// °ÑluaÕ»ÖĞµÄÔªËØÒÀ´Î´ò°üĞ´Èë
+	// æŠŠluaæ ˆä¸­çš„å…ƒç´ ä¾æ¬¡æ‰“åŒ…å†™å…¥
 	pack_from(L,&wb,0);
 	assert(wb.head == &temp);
-	// °ÑĞ´»º³åÇøÁ´±íÊı¾İ¸´ÖÆµ½ĞÂµÄ»º³åÇø
+	// æŠŠå†™ç¼“å†²åŒºé“¾è¡¨æ•°æ®å¤åˆ¶åˆ°æ–°çš„ç¼“å†²åŒº
 	seri(L, &temp, wb.len);
-	// ÊÍ·ÅĞ´»º³åÇøÁ´±í
+	// é‡Šæ”¾å†™ç¼“å†²åŒºé“¾è¡¨
 	wb_free(&wb);
 
 	return 2;

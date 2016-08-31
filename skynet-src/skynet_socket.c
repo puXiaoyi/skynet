@@ -11,41 +11,41 @@
 #include <string.h>
 #include <stdbool.h>
 
-// socket_server ÊµÀı
+// socket_server å®ä¾‹
 static struct socket_server * SOCKET_SERVER = NULL;
 
-// ´´½¨ socket_server
+// åˆ›å»º socket_server
 void 
 skynet_socket_init() {
 	SOCKET_SERVER = socket_server_create();
 }
 
-// ÍË³ö socket_server
+// é€€å‡º socket_server
 void
 skynet_socket_exit() {
 	socket_server_exit(SOCKET_SERVER);
 }
 
-// ÊÍ·Å socket_server
+// é‡Šæ”¾ socket_server
 void
 skynet_socket_free() {
 	socket_server_release(SOCKET_SERVER);
 	SOCKET_SERVER = NULL;
 }
 
-// ×ª·¢²»Í¬ÀàĞÍµÄÏûÏ¢
+// è½¬å‘ä¸åŒç±»å‹çš„æ¶ˆæ¯
 // mainloop thread
-// type ÏûÏ¢ÀàĞÍ£¬SOCKET_DATA µÈ
-// padding ÊÇ·ñÌî³ä
+// type æ¶ˆæ¯ç±»å‹ï¼ŒSOCKET_DATA ç­‰
+// padding æ˜¯å¦å¡«å……
 // result socket_message 
 static void
 forward_message(int type, bool padding, struct socket_message * result) {
-	// ÏÈ°Ñsocket_message×°Èëskynet_socket_message
+	// å…ˆæŠŠsocket_messageè£…å…¥skynet_socket_message
 	struct skynet_socket_message *sm;
 	size_t sz = sizeof(*sm);
 	if (padding) {
-		// Èç¹ûÊÇÌî³ä£¬¶à·ÖÅäÒ»Ğ©Á¬ĞøÄÚ´æ¿Õ¼ä
-		// SOCKET_OPEN SOCKET_ACCEPT SOCKET_ERROR ²»ÄÜ°ÑdataÊı¾İĞ´Èë»º³åÇø
+		// å¦‚æœæ˜¯å¡«å……ï¼Œå¤šåˆ†é…ä¸€äº›è¿ç»­å†…å­˜ç©ºé—´
+		// SOCKET_OPEN SOCKET_ACCEPT SOCKET_ERROR ä¸èƒ½æŠŠdataæ•°æ®å†™å…¥ç¼“å†²åŒº
 		if (result->data) {
 			size_t msg_sz = strlen(result->data);
 			if (msg_sz > 128) {
@@ -61,23 +61,23 @@ forward_message(int type, bool padding, struct socket_message * result) {
 	sm->id = result->id;
 	sm->ud = result->ud;
 	if (padding) {
-		// Èç¹ûÊÇÌî³ä£¬²»ÄÜ·ÅÈë»º³åÇø£¬¸´ÖÆµ½smÖ®ºóµÄÄÚ´æ¿Õ¼ä
+		// å¦‚æœæ˜¯å¡«å……ï¼Œä¸èƒ½æ”¾å…¥ç¼“å†²åŒºï¼Œå¤åˆ¶åˆ°smä¹‹åçš„å†…å­˜ç©ºé—´
 		sm->buffer = NULL;
 		memcpy(sm+1, result->data, sz - sizeof(*sm));
 	} else {
-		// Èç¹û²»ÊÇÌî³ä£¬Ö±½Ó·ÅÈë»º³åÇø
+		// å¦‚æœä¸æ˜¯å¡«å……ï¼Œç›´æ¥æ”¾å…¥ç¼“å†²åŒº
 		sm->buffer = result->data;
 	}
 
-	// ÔÙ°Ñskynet_socket_message×°Èëskynet_message
+	// å†æŠŠskynet_socket_messageè£…å…¥skynet_message
 	struct skynet_message message;
 	message.source = 0;
 	message.session = 0;
 	message.data = sm;
 	message.sz = sz | ((size_t)PTYPE_SOCKET << MESSAGE_TYPE_SHIFT);
 
-	// Ñ¹Èë¶ÔÓ¦·şÎñµÄÏûÏ¢¶ÓÁĞ
-	// result->opaqueÊÇ¶ÔÓ¦·şÎñµÄhandle
+	// å‹å…¥å¯¹åº”æœåŠ¡çš„æ¶ˆæ¯é˜Ÿåˆ—
+	// result->opaqueæ˜¯å¯¹åº”æœåŠ¡çš„handle
 	if (skynet_context_push((uint32_t)result->opaque, &message)) {
 		// todo: report somewhere to close socket
 		// don't call skynet_socket_close here (It will block mainloop)
@@ -86,40 +86,40 @@ forward_message(int type, bool padding, struct socket_message * result) {
 	}
 }
 
-// socketÊÂ¼şÑ­»·£¬ÔÚthread_socketÖĞ±»socketÏß³ÌÑ­»·µ÷ÓÃ
+// socketäº‹ä»¶å¾ªç¯ï¼Œåœ¨thread_socketä¸­è¢«socketçº¿ç¨‹å¾ªç¯è°ƒç”¨
 int 
 skynet_socket_poll() {
 	struct socket_server *ss = SOCKET_SERVER;
 	assert(ss);
 	struct socket_message result;
 	int more = 1;
-	// socket_server ÊÂ¼şÑ­»·
+	// socket_server äº‹ä»¶å¾ªç¯
 	int type = socket_server_poll(ss, &result, &more);
 	switch (type) {
 	case SOCKET_EXIT:
 		return 0;
 	case SOCKET_DATA:
-		// ÓĞÊı¾İ¶ÁÈë
+		// æœ‰æ•°æ®è¯»å…¥
 		forward_message(SKYNET_SOCKET_TYPE_DATA, false, &result);
 		break;
 	case SOCKET_CLOSE:
-		// socket¹Ø±Õ
+		// socketå…³é—­
 		forward_message(SKYNET_SOCKET_TYPE_CLOSE, false, &result);
 		break;
 	case SOCKET_OPEN:
-		// ´ò¿ªÁ¬½Ó
+		// æ‰“å¼€è¿æ¥
 		forward_message(SKYNET_SOCKET_TYPE_CONNECT, true, &result);
 		break;
 	case SOCKET_ERROR:
-		// socket´íÎó
+		// socketé”™è¯¯
 		forward_message(SKYNET_SOCKET_TYPE_ERROR, true, &result);
 		break;
 	case SOCKET_ACCEPT:
-		// ÓĞ±»¶¯Ì×½Ó×ÖÁ¬½Ó
+		// æœ‰è¢«åŠ¨å¥—æ¥å­—è¿æ¥
 		forward_message(SKYNET_SOCKET_TYPE_ACCEPT, true, &result);
 		break;
 	case SOCKET_UDP:
-		// ÓĞudpÊı¾İ¶ÁÈë
+		// æœ‰udpæ•°æ®è¯»å…¥
 		forward_message(SKYNET_SOCKET_TYPE_UDP, false, &result);
 		break;
 	default:
@@ -132,13 +132,13 @@ skynet_socket_poll() {
 	return 1;
 }
 
-// ¼ì²éĞ´»º³åÇøÁ´±íÖĞÊı¾İµÄ´óĞ¡
+// æ£€æŸ¥å†™ç¼“å†²åŒºé“¾è¡¨ä¸­æ•°æ®çš„å¤§å°
 static int
 check_wsz(struct skynet_context *ctx, int id, void *buffer, int64_t wsz) {
 	if (wsz < 0) {
 		return -1;
 	} else if (wsz > 1024 * 1024) {
-		// Èç¹û³¬¹ı1M£¬·¢ËÍ¾¯¸æÏûÏ¢
+		// å¦‚æœè¶…è¿‡1Mï¼Œå‘é€è­¦å‘Šæ¶ˆæ¯
 		struct skynet_socket_message tmp;
 		tmp.type = SKYNET_SOCKET_TYPE_WARNING;
 		tmp.id = id;
@@ -150,81 +150,81 @@ check_wsz(struct skynet_context *ctx, int id, void *buffer, int64_t wsz) {
 	return 0;
 }
 
-// ·¢ËÍsocketÏûÏ¢
+// å‘é€socketæ¶ˆæ¯
 int
 skynet_socket_send(struct skynet_context *ctx, int id, void *buffer, int sz) {
 	int64_t wsz = socket_server_send(SOCKET_SERVER, id, buffer, sz);
 	return check_wsz(ctx, id, buffer, wsz);
 }
 
-// ·¢ËÍsocketÏûÏ¢(µÍÓÅÏÈ¼¶)
+// å‘é€socketæ¶ˆæ¯(ä½ä¼˜å…ˆçº§)
 void
 skynet_socket_send_lowpriority(struct skynet_context *ctx, int id, void *buffer, int sz) {
 	socket_server_send_lowpriority(SOCKET_SERVER, id, buffer, sz);
 }
 
-// ¼àÌısocket
+// ç›‘å¬socket
 int 
 skynet_socket_listen(struct skynet_context *ctx, const char *host, int port, int backlog) {
 	uint32_t source = skynet_context_handle(ctx);
 	return socket_server_listen(SOCKET_SERVER, source, host, port, backlog);
 }
 
-// Á¬½Ósocket
+// è¿æ¥socket
 int 
 skynet_socket_connect(struct skynet_context *ctx, const char *host, int port) {
 	uint32_t source = skynet_context_handle(ctx);
 	return socket_server_connect(SOCKET_SERVER, source, host, port);
 }
 
-// °ó¶¨socket
+// ç»‘å®šsocket
 int 
 skynet_socket_bind(struct skynet_context *ctx, int fd) {
 	uint32_t source = skynet_context_handle(ctx);
 	return socket_server_bind(SOCKET_SERVER, source, fd);
 }
 
-// ¹Ø±Õsocket
+// å…³é—­socket
 void 
 skynet_socket_close(struct skynet_context *ctx, int id) {
 	uint32_t source = skynet_context_handle(ctx);
 	socket_server_close(SOCKET_SERVER, source, id);
 }
 
-// ¹Ø±Õsocket
+// å…³é—­socket
 void 
 skynet_socket_shutdown(struct skynet_context *ctx, int id) {
 	uint32_t source = skynet_context_handle(ctx);
 	socket_server_shutdown(SOCKET_SERVER, source, id);
 }
 
-// Æô¶¯socket
+// å¯åŠ¨socket
 void 
 skynet_socket_start(struct skynet_context *ctx, int id) {
 	uint32_t source = skynet_context_handle(ctx);
 	socket_server_start(SOCKET_SERVER, source, id);
 }
 
-// ÉèÖÃsocketÎªnodelay
+// è®¾ç½®socketä¸ºnodelay
 void
 skynet_socket_nodelay(struct skynet_context *ctx, int id) {
 	socket_server_nodelay(SOCKET_SERVER, id);
 }
 
-// ´´½¨udpÁ¬½Ó
+// åˆ›å»ºudpè¿æ¥
 int 
 skynet_socket_udp(struct skynet_context *ctx, const char * addr, int port) {
 	uint32_t source = skynet_context_handle(ctx);
 	return socket_server_udp(SOCKET_SERVER, source, addr, port);
 }
 
-// Á¬½Óudp
+// è¿æ¥udp
 int 
 skynet_socket_udp_connect(struct skynet_context *ctx, int id, const char * addr, int port) {
 	return socket_server_udp_connect(SOCKET_SERVER, id, addr, port);
 }
 
-// ·¢ËÍudpÏûÏ¢
+// å‘é€udpæ¶ˆæ¯
 int 
 skynet_socket_udp_send(struct skynet_context *ctx, int id, const char * address, const void *buffer, int sz) {
 	int64_t wsz = socket_server_udp_send(SOCKET_SERVER, id, (const struct socket_udp_address *)address, buffer, sz);

@@ -14,7 +14,7 @@
 
 // #define DEBUG_LOG
 
-// »ñÈ¡µ±Ç°Ë«¾«¶ÈÊ±¼äÃëÊı
+// è·å–å½“å‰åŒç²¾åº¦æ—¶é—´ç§’æ•°
 static double
 get_time() {
 #if  !defined(__APPLE__)
@@ -50,26 +50,26 @@ diff_time(double start) {
 }
 
 // profile.start
-// ĞÔÄÜ¸ú×Ù¿ªÊ¼
+// æ€§èƒ½è·Ÿè¸ªå¼€å§‹
 static int
 lstart(lua_State *L) {
-	// Ä¬ÈÏµ±Ç°Ö÷Ïß³Ì£¬Ò²¿ÉÒÔ´«²Î
+	// é»˜è®¤å½“å‰ä¸»çº¿ç¨‹ï¼Œä¹Ÿå¯ä»¥ä¼ å‚
 	if (lua_type(L,1) == LUA_TTHREAD) {
 		lua_settop(L,1);
 	} else {
 		lua_pushthread(L);
 	}
-	// °ÑµÚ¶ş¸öÉÏÖµ±íÖĞtotal timeÖµÑ¹Õ»
+	// æŠŠç¬¬äºŒä¸ªä¸Šå€¼è¡¨ä¸­total timeå€¼å‹æ ˆ
 	lua_rawget(L, lua_upvalueindex(2));
 	if (!lua_isnil(L, -1)) {
 		return luaL_error(L, "Thread %p start profile more than once", lua_topointer(L, 1));
 	}
-	// ÉèÖÃµÚ¶ş¸öÉÏÖµtotal timeÎª0
+	// è®¾ç½®ç¬¬äºŒä¸ªä¸Šå€¼total timeä¸º0
 	lua_pushthread(L);
 	lua_pushnumber(L, 0);
 	lua_rawset(L, lua_upvalueindex(2));
 
-	// ÉèÖÃµÚÒ»¸öÉÏÖµstart timeÎªµ±Ç°Ê±¼ä 
+	// è®¾ç½®ç¬¬ä¸€ä¸ªä¸Šå€¼start timeä¸ºå½“å‰æ—¶é—´ 
 	lua_pushthread(L);
 	double ti = get_time();
 #ifdef DEBUG_LOG
@@ -82,40 +82,40 @@ lstart(lua_State *L) {
 }
 
 // profile.stop
-// ĞÔÄÜ¸ú×Ù½áÊø
+// æ€§èƒ½è·Ÿè¸ªç»“æŸ
 static int
 lstop(lua_State *L) {
-	// Ä¬ÈÏµ±Ç°Ö÷Ïß³Ì£¬Ò²¿ÉÒÔ´«²Î
+	// é»˜è®¤å½“å‰ä¸»çº¿ç¨‹ï¼Œä¹Ÿå¯ä»¥ä¼ å‚
 	if (lua_type(L,1) == LUA_TTHREAD) {
 		lua_settop(L,1);
 	} else {
 		lua_pushthread(L);
 	}
-	// °ÑµÚÒ»¸öÉÏÖµ±íÖĞstart timeÖµÑ¹Õ»
+	// æŠŠç¬¬ä¸€ä¸ªä¸Šå€¼è¡¨ä¸­start timeå€¼å‹æ ˆ
 	lua_rawget(L, lua_upvalueindex(1));
 	if (lua_type(L, -1) != LUA_TNUMBER) {
-		// ±ØĞëÔÚstopÖ®Ç°Ö´ĞĞstart
+		// å¿…é¡»åœ¨stopä¹‹å‰æ‰§è¡Œstart
 		return luaL_error(L, "Call profile.start() before profile.stop()");
 	} 
-	// ¼ÆËãstart time Óëµ±Ç°Ê±¼äµÄ²îÖµ
+	// è®¡ç®—start time ä¸å½“å‰æ—¶é—´çš„å·®å€¼
 	double ti = diff_time(lua_tonumber(L, -1));
-	// °ÑµÚ¶ş¸öÉÏÖµ±íÖĞtotal timeÖµÑ¹Õ»
+	// æŠŠç¬¬äºŒä¸ªä¸Šå€¼è¡¨ä¸­total timeå€¼å‹æ ˆ
 	lua_pushthread(L);
 	lua_rawget(L, lua_upvalueindex(2));
-	// »ñÈ¡total time
+	// è·å–total time
 	double total_time = lua_tonumber(L, -1);
 
-	// ÉèÖÃµÚÒ»¸öÉÏÖµÎªnil
+	// è®¾ç½®ç¬¬ä¸€ä¸ªä¸Šå€¼ä¸ºnil
 	lua_pushthread(L);
 	lua_pushnil(L);
 	lua_rawset(L, lua_upvalueindex(1));
 
-	// ÉèÖÃµÚ¶ş¸öÉÏÖµÎªnil
+	// è®¾ç½®ç¬¬äºŒä¸ªä¸Šå€¼ä¸ºnil
 	lua_pushthread(L);
 	lua_pushnil(L);
 	lua_rawset(L, lua_upvalueindex(2));
 
-	// ¸üĞÂtotaltime²¢Ñ¹ÈëÕ»×÷Îªlua·µ»ØÖµ
+	// æ›´æ–°totaltimeå¹¶å‹å…¥æ ˆä½œä¸ºluaè¿”å›å€¼
 	total_time += ti;
 	lua_pushnumber(L, total_time);
 #ifdef DEBUG_LOG
@@ -130,29 +130,29 @@ timing_resume(lua_State *L) {
 #ifdef DEBUG_LOG
 	lua_State *from = lua_tothread(L, -1);
 #endif
-	// °ÑµÚ¶ş¸öÉÏÖµ±íÖĞtotal timeÖµÑ¹Õ»
+	// æŠŠç¬¬äºŒä¸ªä¸Šå€¼è¡¨ä¸­total timeå€¼å‹æ ˆ
 	lua_rawget(L, lua_upvalueindex(2));
 	if (lua_isnil(L, -1)) {		// check total time
 		lua_pop(L,1);
 	} else {
-		// Ö»¼ì²étotal time·Ç¿Õ£¬²»È¡Öµ
+		// åªæ£€æŸ¥total timeéç©ºï¼Œä¸å–å€¼
 		lua_pop(L,1);
-		// ¸´ÖÆÖ÷Ïß³ÌÑ¹Õ»
+		// å¤åˆ¶ä¸»çº¿ç¨‹å‹æ ˆ
 		lua_pushvalue(L,1);
-		// »ñÈ¡µ±Ç°Ê±¼ä
+		// è·å–å½“å‰æ—¶é—´
 		double ti = get_time();
 #ifdef DEBUG_LOG
 		fprintf(stderr, "PROFILE [%p] resume\n", from);
 #endif
-		// ÉèÖÃµÚÒ»¸öÉÏÖµÎª×îĞÂµÄstart time
+		// è®¾ç½®ç¬¬ä¸€ä¸ªä¸Šå€¼ä¸ºæœ€æ–°çš„start time
 		lua_pushnumber(L, ti);
 		lua_rawset(L, lua_upvalueindex(1));	// set start time
 	}
 
-	// »ñÈ¡µÚÈı¸öÉÏÖµ£¬¼´coroutine.resume·½·¨
+	// è·å–ç¬¬ä¸‰ä¸ªä¸Šå€¼ï¼Œå³coroutine.resumeæ–¹æ³•
 	lua_CFunction co_resume = lua_tocfunction(L, lua_upvalueindex(3));
 
-	// Ö´ĞĞcoroutine.resume·½·¨
+	// æ‰§è¡Œcoroutine.resumeæ–¹æ³•
 	return co_resume(L);
 }
 
@@ -160,7 +160,7 @@ timing_resume(lua_State *L) {
 // coroutine_resume skynet.lua
 static int
 lresume(lua_State *L) {
-	// °Ñµ±Ç°×´Ì¬»úµÄÖ÷Ïß³ÌÑ¹Õ»
+	// æŠŠå½“å‰çŠ¶æ€æœºçš„ä¸»çº¿ç¨‹å‹æ ˆ
 	lua_pushvalue(L,1);
 	
 	return timing_resume(L);
@@ -179,41 +179,41 @@ timing_yield(lua_State *L) {
 #ifdef DEBUG_LOG
 	lua_State *from = lua_tothread(L, -1);
 #endif
-	// °ÑµÚ¶ş¸öÉÏÖµ±íÖĞtotal timeÖµÑ¹Õ»
+	// æŠŠç¬¬äºŒä¸ªä¸Šå€¼è¡¨ä¸­total timeå€¼å‹æ ˆ
 	lua_rawget(L, lua_upvalueindex(2));	// check total time
 	if (lua_isnil(L, -1)) {
 		lua_pop(L,1);
 	} else {
-		// »ñÈ¡total time
+		// è·å–total time
 		double ti = lua_tonumber(L, -1);
 		lua_pop(L,1);
 
-		// °Ñµ±Ç°×´Ì¬»úµÄÖ÷Ïß³ÌÑ¹Õ»
+		// æŠŠå½“å‰çŠ¶æ€æœºçš„ä¸»çº¿ç¨‹å‹æ ˆ
 		lua_pushthread(L);
-		// °ÑµÚÒ»¸öÉÏÖµÖĞstart timeÖµÑ¹Õ»
+		// æŠŠç¬¬ä¸€ä¸ªä¸Šå€¼ä¸­start timeå€¼å‹æ ˆ
 		lua_rawget(L, lua_upvalueindex(1));
-		// »ñÈ¡start time
+		// è·å–start time
 		double starttime = lua_tonumber(L, -1);
 		lua_pop(L,1);
 
-		// ¼ÆËãstart time ²îÖµ£¬²¢¸üĞÂtotal time
+		// è®¡ç®—start time å·®å€¼ï¼Œå¹¶æ›´æ–°total time
 		double diff = diff_time(starttime);
 		ti += diff;
 #ifdef DEBUG_LOG
 		fprintf(stderr, "PROFILE [%p] yield (%lf/%lf)\n", from, diff, ti);
 #endif
 
-		// °Ñµ±Ç°×´Ì¬»úµÄÖ÷Ïß³ÌÑ¹Õ»
+		// æŠŠå½“å‰çŠ¶æ€æœºçš„ä¸»çº¿ç¨‹å‹æ ˆ
 		lua_pushthread(L);
-		// ÉèÖÃµÚ¶ş¸öÉÏÖµÎª×îĞÂµÄtotal time
+		// è®¾ç½®ç¬¬äºŒä¸ªä¸Šå€¼ä¸ºæœ€æ–°çš„total time
 		lua_pushnumber(L, ti);
 		lua_rawset(L, lua_upvalueindex(2));
 	}
 
-	// »ñÈ¡µÚÈı¸öÉÏÖµ£¬¼´coroutine.yield·½·¨
+	// è·å–ç¬¬ä¸‰ä¸ªä¸Šå€¼ï¼Œå³coroutine.yieldæ–¹æ³•
 	lua_CFunction co_yield = lua_tocfunction(L, lua_upvalueindex(3));
 
-	// Ö´ĞĞcoroutine.yield·½·¨
+	// æ‰§è¡Œcoroutine.yieldæ–¹æ³•
 	return co_yield(L);
 }
 
@@ -221,7 +221,7 @@ timing_yield(lua_State *L) {
 // coroutine_yield skynet.lua
 static int
 lyield(lua_State *L) {
-	// °Ñµ±Ç°×´Ì¬»úµÄÖ÷Ïß³ÌÑ¹Õ»
+	// æŠŠå½“å‰çŠ¶æ€æœºçš„ä¸»çº¿ç¨‹å‹æ ˆ
 	lua_pushthread(L);
 
 	return timing_yield(L);
@@ -250,14 +250,14 @@ luaopen_profile(lua_State *L) {
 		{ "yield_co", lyield_co },
 		{ NULL, NULL },
 	};
-	// ´´½¨Ò»ÕÅĞÂµÄ±í£¬²¢Ô¤·ÖÅä×ã¹»±£´æÏÂÊı×é l ÄÚÈİµÄ¿Õ¼ä£¨µ«²»Ìî³ä£©
+	// åˆ›å»ºä¸€å¼ æ–°çš„è¡¨ï¼Œå¹¶é¢„åˆ†é…è¶³å¤Ÿä¿å­˜ä¸‹æ•°ç»„ l å†…å®¹çš„ç©ºé—´ï¼ˆä½†ä¸å¡«å……ï¼‰
 	luaL_newlibtable(L,l);
-	// ´´½¨Ò»ÕÅĞÂ±í£¬´æ·Å thread->start time ¼üÖµ¶Ô
+	// åˆ›å»ºä¸€å¼ æ–°è¡¨ï¼Œå­˜æ”¾ thread->start time é”®å€¼å¯¹
 	lua_newtable(L);	// table thread->start time
-	// ´´½¨Ò»ÕÅĞÂ±í£¬´æ·Å thread->total time ¼üÖµ¶Ô
+	// åˆ›å»ºä¸€å¼ æ–°è¡¨ï¼Œå­˜æ”¾ thread->total time é”®å€¼å¯¹
 	lua_newtable(L);	// table thread->total time
 
-	// ´´½¨Ò»ÕÅÈõ±í£¬²¢¸´ÖÆÒ»·İ£¬·Ö±ğÉèÖÃÎªÒÔÉÏÁ½±íµÄÔª±í
+	// åˆ›å»ºä¸€å¼ å¼±è¡¨ï¼Œå¹¶å¤åˆ¶ä¸€ä»½ï¼Œåˆ†åˆ«è®¾ç½®ä¸ºä»¥ä¸Šä¸¤è¡¨çš„å…ƒè¡¨
 	lua_newtable(L);	// weak table
 	lua_pushliteral(L, "kv");
 	lua_setfield(L, -2, "__mode");
@@ -266,31 +266,31 @@ luaopen_profile(lua_State *L) {
 	lua_setmetatable(L, -3); 
 	lua_setmetatable(L, -3);
 
-	// °ÑnilÑ¹Õ»Õ¼Î»£¬ÎªµÚÈı¸öÉÏÖµÔ¤Áô¿Õ¼ä
+	// æŠŠnilå‹æ ˆå ä½ï¼Œä¸ºç¬¬ä¸‰ä¸ªä¸Šå€¼é¢„ç•™ç©ºé—´
 	lua_pushnil(L);	// cfunction (coroutine.resume or coroutine.yield)
-	// °ÑÊı×é l ÖĞµÄËùÓĞº¯Êı×¢²áµ½Õ»¶¥µÄ±íÖĞ
-	// nup = 3 Èı¸öÉÏÖµ£¬·Ö±ğÎª starttime(1),totaltime(2),nil(3)
+	// æŠŠæ•°ç»„ l ä¸­çš„æ‰€æœ‰å‡½æ•°æ³¨å†Œåˆ°æ ˆé¡¶çš„è¡¨ä¸­
+	// nup = 3 ä¸‰ä¸ªä¸Šå€¼ï¼Œåˆ†åˆ«ä¸º starttime(1),totaltime(2),nil(3)
 	luaL_setfuncs(L,l,3);
 
-	// ¼ÇÂ¼×¢²á±íµÄÕ»Ë÷Òı
+	// è®°å½•æ³¨å†Œè¡¨çš„æ ˆç´¢å¼•
 	int libtable = lua_gettop(L);
 
-	// °ÑÈ«¾Ö±äÁ¿coroutineÑ¹Õ»
+	// æŠŠå…¨å±€å˜é‡coroutineå‹æ ˆ
 	lua_getglobal(L, "coroutine");
 
-	// °Ñ±ê×¼¿âÀïcoroutine.resumeÑ¹Õ»
+	// æŠŠæ ‡å‡†åº“é‡Œcoroutine.resumeå‹æ ˆ
 	
-	// °Ñcoroutine[resume]Ñ¹Õ»
+	// æŠŠcoroutine[resume]å‹æ ˆ
 	lua_getfield(L, -1, "resume");
 
-	// »ñÈ¡coroutine.resume·½·¨
+	// è·å–coroutine.resumeæ–¹æ³•
 	lua_CFunction co_resume = lua_tocfunction(L, -1);
 	if (co_resume == NULL)
 		return luaL_error(L, "Can't get coroutine.resume");
-	// °Ñcoroutine[resume]µ¯³öÕ»
+	// æŠŠcoroutine[resume]å¼¹å‡ºæ ˆ
 	lua_pop(L,1);
 
-	//ÉèÖÃ×¢²á±íÖĞµÄresumeºÍresume_co·½·¨µÄµÚÈı¸öÉÏÖµÎªcoroutine.resume·½·¨
+	//è®¾ç½®æ³¨å†Œè¡¨ä¸­çš„resumeå’Œresume_coæ–¹æ³•çš„ç¬¬ä¸‰ä¸ªä¸Šå€¼ä¸ºcoroutine.resumeæ–¹æ³•
 
 	lua_getfield(L, libtable, "resume");
 	lua_pushcfunction(L, co_resume);
@@ -302,19 +302,19 @@ luaopen_profile(lua_State *L) {
 	lua_setupvalue(L, -2, 3);
 	lua_pop(L,1);
 
-	// °Ñ±ê×¼¿âÀïcoroutine.yieldÑ¹Õ»
+	// æŠŠæ ‡å‡†åº“é‡Œcoroutine.yieldå‹æ ˆ
 
-	// °Ñcoroutine[yield]Ñ¹Õ»
+	// æŠŠcoroutine[yield]å‹æ ˆ
 	lua_getfield(L, -1, "yield");
 
-	// »ñÈ¡coroutine.yield·½·¨
+	// è·å–coroutine.yieldæ–¹æ³•
 	lua_CFunction co_yield = lua_tocfunction(L, -1);
 	if (co_yield == NULL)
 		return luaL_error(L, "Can't get coroutine.yield");
-	// °Ñcoroutine[yield]µ¯³öÕ»
+	// æŠŠcoroutine[yield]å¼¹å‡ºæ ˆ
 	lua_pop(L,1);
 
-	//ÉèÖÃ×¢²á±íÖĞµÄyieldºÍyield_co·½·¨µÄµÚÈı¸öÉÏÖµÎªcoroutine.yield·½·¨
+	//è®¾ç½®æ³¨å†Œè¡¨ä¸­çš„yieldå’Œyield_coæ–¹æ³•çš„ç¬¬ä¸‰ä¸ªä¸Šå€¼ä¸ºcoroutine.yieldæ–¹æ³•
 
 	lua_getfield(L, libtable, "yield");
 	lua_pushcfunction(L, co_yield);
@@ -326,7 +326,7 @@ luaopen_profile(lua_State *L) {
 	lua_setupvalue(L, -2, 3);
 	lua_pop(L,1);
 
-	// ÉèÖÃÕ»¶¥Îª×¢²á±íË÷Òı£¬ÇåÀíÆäËûÕ»ÔªËØ
+	// è®¾ç½®æ ˆé¡¶ä¸ºæ³¨å†Œè¡¨ç´¢å¼•ï¼Œæ¸…ç†å…¶ä»–æ ˆå…ƒç´ 
 	lua_settop(L, libtable);
 
 	return 1;

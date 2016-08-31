@@ -9,16 +9,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// ÄÚ´æ±¨¾¯ãÐÖµ 32M
+// å†…å­˜æŠ¥è­¦é˜ˆå€¼ 32M
 #define MEMORY_WARNING_REPORT (1024 * 1024 * 32)
 
-// snlua½á¹¹
+// snluaç»“æž„
 struct snlua {
-	lua_State * L;					// luaÐéÄâ»ú
-	struct skynet_context * ctx;	// skynet·þÎñ
-	size_t mem;						// Õ¼ÓÃÄÚ´æ
-	size_t mem_report;				// ÄÚ´æ±¨¾¯ãÐÖµ
-	size_t mem_limit;				// ÄÚ´æÏÞÖÆ 
+	lua_State * L;					// luaè™šæ‹Ÿæœº
+	struct skynet_context * ctx;	// skynetæœåŠ¡
+	size_t mem;						// å ç”¨å†…å­˜
+	size_t mem_report;				// å†…å­˜æŠ¥è­¦é˜ˆå€¼
+	size_t mem_limit;				// å†…å­˜é™åˆ¶ 
 };
 
 // LUA_CACHELIB may defined in patched lua for shared proto
@@ -35,25 +35,25 @@ cleardummy(lua_State *L) {
 
 static int 
 codecache(lua_State *L) {
-	// ×¢²á·½·¨¼¯£¬±ØÐëÒÔNULL,NULL½áÎ²
+	// æ³¨å†Œæ–¹æ³•é›†ï¼Œå¿…é¡»ä»¥NULL,NULLç»“å°¾
 	luaL_Reg l[] = {
 		{ "clear", cleardummy },
 		{ "mode", cleardummy },
 		{ NULL, NULL },
 	};
-	// ´´½¨Ò»ÕÅÐÂ±í£¬°Ñ·½·¨¼¯×¢²á½øÈ¥
-	// ÐÂ±íÍ¬Ê±±»Ñ¹ÈëÕ»ÖÐ
+	// åˆ›å»ºä¸€å¼ æ–°è¡¨ï¼ŒæŠŠæ–¹æ³•é›†æ³¨å†Œè¿›åŽ»
+	// æ–°è¡¨åŒæ—¶è¢«åŽ‹å…¥æ ˆä¸­
 	luaL_newlib(L,l);
-	// °ÑÈ«¾Ö±äÁ¿loadfileÑ¹ÈëÕ»ÖÐ
+	// æŠŠå…¨å±€å˜é‡loadfileåŽ‹å…¥æ ˆä¸­
 	lua_getglobal(L, "loadfile");
-	// ÉèÖÃÐÂ±íÖÐË÷ÒýloadfileµÄÖµÎª¸Õ¸ÕÑ¹ÈëÕ»¶¥µÄÈ«¾Ö±äÁ¿loadfileµÄÖµ
+	// è®¾ç½®æ–°è¡¨ä¸­ç´¢å¼•loadfileçš„å€¼ä¸ºåˆšåˆšåŽ‹å…¥æ ˆé¡¶çš„å…¨å±€å˜é‡loadfileçš„å€¼
 	lua_setfield(L, -2, "loadfile");
 	return 1;
 }
 
 #endif
 
-// ×Ô¶¨Òå´íÎó´¦Àíº¯Êý
+// è‡ªå®šä¹‰é”™è¯¯å¤„ç†å‡½æ•°
 static int 
 traceback (lua_State *L) {
 	const char *msg = lua_tostring(L, 1);
@@ -80,27 +80,27 @@ optstring(struct skynet_context *ctx, const char *key, const char * str) {
 	return ret;
 }
 
-// »Øµ÷º¯ÊýÂß¼­
+// å›žè°ƒå‡½æ•°é€»è¾‘
 static int
 init_cb(struct snlua *l, struct skynet_context *ctx, const char * args, size_t sz) {
 	lua_State *L = l->L;
 	l->ctx = ctx;
-	// Í£Ö¹GC
+	// åœæ­¢GC
 	lua_gc(L, LUA_GCSTOP, 0);
-	// ÉèÖÃ LUA_NOENV Îª true
+	// è®¾ç½® LUA_NOENV ä¸º true
 	lua_pushboolean(L, 1);  /* signal for libraries to ignore env. vars. */
 	lua_setfield(L, LUA_REGISTRYINDEX, "LUA_NOENV");
-	// ´ò¿ª×´Ì¬»úÖÐµÄËùÓÐ Lua ±ê×¼¿â
+	// æ‰“å¼€çŠ¶æ€æœºä¸­çš„æ‰€æœ‰ Lua æ ‡å‡†åº“
 	luaL_openlibs(L);
-	// °Ñskynet·þÎñÑ¹ÈëÕ»£¬²¢ÉèÖÃÎª×¢²á±í±äÁ¿skynet_context
+	// æŠŠskynetæœåŠ¡åŽ‹å…¥æ ˆï¼Œå¹¶è®¾ç½®ä¸ºæ³¨å†Œè¡¨å˜é‡skynet_context
 	lua_pushlightuserdata(L, ctx);
 	lua_setfield(L, LUA_REGISTRYINDEX, "skynet_context");
-	// Èç¹û "skynet.codecache" ²»ÔÚ package.loaded ÖÐ£¬ Ôòµ÷ÓÃº¯Êý codecache £¬²¢´«Èë×Ö·û´® "skynet.codecache"¡£ ½«Æä·µ»ØÖµÖÃÈë package.loaded[skynet.codecache]
+	// å¦‚æžœ "skynet.codecache" ä¸åœ¨ package.loaded ä¸­ï¼Œ åˆ™è°ƒç”¨å‡½æ•° codecache ï¼Œå¹¶ä¼ å…¥å­—ç¬¦ä¸² "skynet.codecache"ã€‚ å°†å…¶è¿”å›žå€¼ç½®å…¥ package.loaded[skynet.codecache]
 	luaL_requiref(L, "skynet.codecache", codecache , 0);
-	// Çå¿ÕÕ»
+	// æ¸…ç©ºæ ˆ
 	lua_pop(L,1);
  
-	// ÉèÖÃ LUA_PATH¡¢LUA_CPATH¡¢LUA_SERVICE¡¢LUA_PRELOAD ËÄ¸öÈ«¾Ö±äÁ¿Öµ
+	// è®¾ç½® LUA_PATHã€LUA_CPATHã€LUA_SERVICEã€LUA_PRELOAD å››ä¸ªå…¨å±€å˜é‡å€¼
 	const char *path = optstring(ctx, "lua_path","./lualib/?.lua;./lualib/?/init.lua");
 	lua_pushstring(L, path);
 	lua_setglobal(L, "LUA_PATH");
@@ -114,96 +114,96 @@ init_cb(struct snlua *l, struct skynet_context *ctx, const char * args, size_t s
 	lua_pushstring(L, preload);
 	lua_setglobal(L, "LUA_PRELOAD");
 
-	// °Ñcº¯ÊýtracebackÑ¹ÈëÕ»
+	// æŠŠcå‡½æ•°tracebackåŽ‹å…¥æ ˆ
 	lua_pushcfunction(L, traceback);
-	// ±£Ö¤cº¯ÊýÔÚÕ»¶¥
+	// ä¿è¯cå‡½æ•°åœ¨æ ˆé¡¶
 	assert(lua_gettop(L) == 1);
 
 	const char * loader = optstring(ctx, "lualoader", "./lualib/loader.lua");
 
-	// ¼ÓÔØloaderÎÄ¼þ
-	// ´ÓÎÄ¼þÖÐ¼ÓÔØlua´úÂë²¢±àÒë£¬±àÒë³É¹¦ºóµÄ³ÌÐò¿é±»Ñ¹ÈëÕ»ÖÐ
+	// åŠ è½½loaderæ–‡ä»¶
+	// ä»Žæ–‡ä»¶ä¸­åŠ è½½luaä»£ç å¹¶ç¼–è¯‘ï¼Œç¼–è¯‘æˆåŠŸåŽçš„ç¨‹åºå—è¢«åŽ‹å…¥æ ˆä¸­
 	int r = luaL_loadfile(L,loader);
 	if (r != LUA_OK) {
 		skynet_error(ctx, "Can't load %s : %s", loader, lua_tostring(L, -1));
 		report_launcher_error(ctx);
 		return 1;
 	}
-	// °Ñ²ÎÊý×Ö·û´®Ñ¹ÈëÕ»
+	// æŠŠå‚æ•°å­—ç¬¦ä¸²åŽ‹å…¥æ ˆ
 	lua_pushlstring(L, args, sz);
-	// ÔËÐÐlua·½·¨£¬ÕâÀïÎªluaL_loadfile¼ÓÔØ²¢±àÒë³É¹¦µÄ´úÂë¿é
-	// ²ÎÊýÎªlualibÖÐluaÎÄ¼þÃû£¬ÕâÀï¾ÍÊÇÓÃ×Ô¶¨ÒåµÄloader´úÂë¼ÓÔØÌØ¶¨µÄlualibÎÄ¼þ
-	// nargs = 1 Ò»¸ö²ÎÊý
-	// nresults = 0 Ã»ÓÐ·µ»ØÖµ
-	// msgh = 1 ´íÎó´¦Àíº¯ÊýÖ¸ÏòÕ»ÉÏË÷ÒýÎª1µÄcº¯Êýtraceback£¬Èç¹ûÎª0ÔòÊÇÄ¬ÈÏµÄ´íÎó´¦Àíº¯Êý
+	// è¿è¡Œluaæ–¹æ³•ï¼Œè¿™é‡Œä¸ºluaL_loadfileåŠ è½½å¹¶ç¼–è¯‘æˆåŠŸçš„ä»£ç å—
+	// å‚æ•°ä¸ºlualibä¸­luaæ–‡ä»¶åï¼Œè¿™é‡Œå°±æ˜¯ç”¨è‡ªå®šä¹‰çš„loaderä»£ç åŠ è½½ç‰¹å®šçš„lualibæ–‡ä»¶
+	// nargs = 1 ä¸€ä¸ªå‚æ•°
+	// nresults = 0 æ²¡æœ‰è¿”å›žå€¼
+	// msgh = 1 é”™è¯¯å¤„ç†å‡½æ•°æŒ‡å‘æ ˆä¸Šç´¢å¼•ä¸º1çš„cå‡½æ•°tracebackï¼Œå¦‚æžœä¸º0åˆ™æ˜¯é»˜è®¤çš„é”™è¯¯å¤„ç†å‡½æ•°
 	r = lua_pcall(L,1,0,1);
 	if (r != LUA_OK) {
 		skynet_error(ctx, "lua loader error : %s", lua_tostring(L, -1));
 		report_launcher_error(ctx);
 		return 1;
 	}
-	// Çå¿ÕÕ»
+	// æ¸…ç©ºæ ˆ
 	lua_settop(L,0);
-	// °Ñ×¢²á±í±äÁ¿memlimitÑ¹ÈëÕ»£¬ÅÐ¶ÏÀàÐÍÊÇ·ñÎªLUA_TNUMBER
+	// æŠŠæ³¨å†Œè¡¨å˜é‡memlimitåŽ‹å…¥æ ˆï¼Œåˆ¤æ–­ç±»åž‹æ˜¯å¦ä¸ºLUA_TNUMBER
 	if (lua_getfield(L, LUA_REGISTRYINDEX, "memlimit") == LUA_TNUMBER) {
-		// »ñÈ¡memlimitÖµ£¬ÅÐ¶ÏÄÚ´æ±¨¾¯
+		// èŽ·å–memlimitå€¼ï¼Œåˆ¤æ–­å†…å­˜æŠ¥è­¦
 		size_t limit = lua_tointeger(L, -1);
 		l->mem_limit = limit;
 		skynet_error(ctx, "Set memory limit to %.2f M", (float)limit / (1024 * 1024));
-		// °ÑnilÑ¹ÈëÕ»£¬²¢ÉèÖÃÎª×¢²á±í±äÁ¿memlimit
+		// æŠŠnilåŽ‹å…¥æ ˆï¼Œå¹¶è®¾ç½®ä¸ºæ³¨å†Œè¡¨å˜é‡memlimit
 		lua_pushnil(L);
 		lua_setfield(L, LUA_REGISTRYINDEX, "memlimit");
 	}
-	// µ¯³ö×¢²á±í±äÁ¿memlimit
+	// å¼¹å‡ºæ³¨å†Œè¡¨å˜é‡memlimit
 	lua_pop(L, 1);
 
-	// ÖØÆôGC
+	// é‡å¯GC
 	lua_gc(L, LUA_GCRESTART, 0);
 
 	return 0;
 }
 
-// »Øµ÷º¯Êý
+// å›žè°ƒå‡½æ•°
 static int
 launch_cb(struct skynet_context * context, void *ud, int type, int session, uint32_t source , const void * msg, size_t sz) {
-	// È·±£ÊÇµÚÒ»ÌõÏûÏ¢
+	// ç¡®ä¿æ˜¯ç¬¬ä¸€æ¡æ¶ˆæ¯
 	assert(type == 0 && session == 0);
 	struct snlua *l = ud;
-	// Çå³ý»Øµ÷º¯Êý
+	// æ¸…é™¤å›žè°ƒå‡½æ•°
 	skynet_callback(context, NULL, NULL);
-	// Ö´ÐÐ»Øµ÷Âß¼­
+	// æ‰§è¡Œå›žè°ƒé€»è¾‘
 	int err = init_cb(l, context, msg, sz);
 	if (err) {
-		// Èç¹û³ö´í£¬ÍË³ö·þÎñ
+		// å¦‚æžœå‡ºé”™ï¼Œé€€å‡ºæœåŠ¡
 		skynet_command(context, "EXIT", NULL);
 	}
 
 	return 0;
 }
 
-// ³õÊ¼»¯snlua½á¹¹
+// åˆå§‹åŒ–snluaç»“æž„
 int
 snlua_init(struct snlua *l, struct skynet_context *ctx, const char * args) {
 	int sz = strlen(args);
 	char * tmp = skynet_malloc(sz);
 	memcpy(tmp, args, sz);
-	// ×¢²á»Øµ÷º¯Êý
+	// æ³¨å†Œå›žè°ƒå‡½æ•°
 	skynet_callback(ctx, l , launch_cb);
-	// ´«²ÎÎªNULL£¬»ñÈ¡µ±Ç°skynet·þÎñ":%x"¸ñÊ½µÄhandleÖµ
+	// ä¼ å‚ä¸ºNULLï¼ŒèŽ·å–å½“å‰skynetæœåŠ¡":%x"æ ¼å¼çš„handleå€¼
 	const char * self = skynet_command(ctx, "REG", NULL);
-	// ¸ñÊ½»¯Îª16½øÖÆÕûÊý
+	// æ ¼å¼åŒ–ä¸º16è¿›åˆ¶æ•´æ•°
 	uint32_t handle_id = strtoul(self+1, NULL, 16);
 	// it must be first message
-	// ¸ø×Ô¼º·¢µÚÒ»ÌõÏûÏ¢
+	// ç»™è‡ªå·±å‘ç¬¬ä¸€æ¡æ¶ˆæ¯
 	skynet_send(ctx, 0, handle_id, PTYPE_TAG_DONTCOPY,0, tmp, sz);
 	return 0;
 }
 
-// ×Ô¶¨ÒåÄÚ´æ·ÖÅäÆ÷º¯Êý
-// ud £¬Ò»¸öÓÉ lua_newstate ´«¸øËüµÄÖ¸Õë
-// ptr £¬Ò»¸öÖ¸ÏòÒÑ·ÖÅä³öÀ´/½«±»ÖØÐÂ·ÖÅä/ÒªÊÍ·ÅµÄÄÚ´æ¿éÖ¸Õë
-// osize £¬ÄÚ´æ¿éÔ­À´µÄ³ß´ç»òÊÇ¹ØÓÚÊ²Ã´½«±»·ÖÅä³öÀ´µÄ´úÂë
-// nsize £¬ÐÂÄÚ´æ¿éµÄ³ß´ç
+// è‡ªå®šä¹‰å†…å­˜åˆ†é…å™¨å‡½æ•°
+// ud ï¼Œä¸€ä¸ªç”± lua_newstate ä¼ ç»™å®ƒçš„æŒ‡é’ˆ
+// ptr ï¼Œä¸€ä¸ªæŒ‡å‘å·²åˆ†é…å‡ºæ¥/å°†è¢«é‡æ–°åˆ†é…/è¦é‡Šæ”¾çš„å†…å­˜å—æŒ‡é’ˆ
+// osize ï¼Œå†…å­˜å—åŽŸæ¥çš„å°ºå¯¸æˆ–æ˜¯å…³äºŽä»€ä¹ˆå°†è¢«åˆ†é…å‡ºæ¥çš„ä»£ç 
+// nsize ï¼Œæ–°å†…å­˜å—çš„å°ºå¯¸
 static void *
 lalloc(void * ud, void *ptr, size_t osize, size_t nsize) {
 	struct snlua *l = ud;
@@ -224,19 +224,19 @@ lalloc(void * ud, void *ptr, size_t osize, size_t nsize) {
 	return skynet_lalloc(ptr, osize, nsize);
 }
 
-// ´´½¨snlua½á¹¹
+// åˆ›å»ºsnluaç»“æž„
 struct snlua *
 snlua_create(void) {
 	struct snlua * l = skynet_malloc(sizeof(*l));
 	memset(l,0,sizeof(*l));
 	l->mem_report = MEMORY_WARNING_REPORT;
 	l->mem_limit = 0;
-	// ´´½¨luaÐéÄâ»ú
+	// åˆ›å»ºluaè™šæ‹Ÿæœº
 	l->L = lua_newstate(lalloc, l);
 	return l;
 }
 
-// ¹Ø±Õ²¢ÊÍ·Ålua×´Ì¬»ú
+// å…³é—­å¹¶é‡Šæ”¾luaçŠ¶æ€æœº
 void
 snlua_release(struct snlua *l) {
 	lua_close(l->L);

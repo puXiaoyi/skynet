@@ -19,19 +19,19 @@
 #define LARGE_PAGE_NODE 12
 #define BUFFER_LIMIT (256 * 1024)
 
-// »º³åÇø½Úµã
+// ç¼“å†²åŒºèŠ‚ç‚¹
 struct buffer_node {
-	char * msg;					// ÏûÏ¢Ö¸Õë
-	int sz;						// ÏûÏ¢´óĞ¡
-	struct buffer_node *next;	// ÏÂÒ»¸ö½ÚµãÖ¸Õë
+	char * msg;					// æ¶ˆæ¯æŒ‡é’ˆ
+	int sz;						// æ¶ˆæ¯å¤§å°
+	struct buffer_node *next;	// ä¸‹ä¸€ä¸ªèŠ‚ç‚¹æŒ‡é’ˆ
 };
 
-// »º³åÇøÁ´±í
+// ç¼“å†²åŒºé“¾è¡¨
 struct socket_buffer {
-	int size;					// ËùÓĞ½ÚµãÊı¾İµÄ×Ü³¤¶È
-	int offset;					// ÒÑ¶ÁÊı¾İ³¤¶ÈÆ«ÒÆ
-	struct buffer_node *head;	// Í·Ö¸Õë
-	struct buffer_node *tail;	// Î²Ö¸Õë
+	int size;					// æ‰€æœ‰èŠ‚ç‚¹æ•°æ®çš„æ€»é•¿åº¦
+	int offset;					// å·²è¯»æ•°æ®é•¿åº¦åç§»
+	struct buffer_node *head;	// å¤´æŒ‡é’ˆ
+	struct buffer_node *tail;	// å°¾æŒ‡é’ˆ
 };
 
 /*
@@ -45,17 +45,17 @@ struct socket_buffer {
 	and the second size is 16 ... The largest size of chunk is LARGE_PAGE_NODE (4096)
 
 */
-// ÊÍ·Å»º³åÇø³Ø
+// é‡Šæ”¾ç¼“å†²åŒºæ± 
 static int
 lfreepool(lua_State *L) {
-	// »ñÈ¡µÚÒ»¸ö²ÎÊı£¬»º³åÇø³Ø
+	// è·å–ç¬¬ä¸€ä¸ªå‚æ•°ï¼Œç¼“å†²åŒºæ± 
 	struct buffer_node * pool = lua_touserdata(L, 1);
-	// lua_rawlen »ñÈ¡¸ÃÓÃ»§Êı¾İ·ÖÅäµÄÄÚ´æ¿éµÄ´óĞ¡
-	// sizeof(*pool) Îªµ¥¸öbuffer_node½á¹¹Õ¼ÓÃÄÚ´æ¿é´óĞ¡
-	// sz Îª»º³å³ØµÄ³¤¶È
+	// lua_rawlen è·å–è¯¥ç”¨æˆ·æ•°æ®åˆ†é…çš„å†…å­˜å—çš„å¤§å°
+	// sizeof(*pool) ä¸ºå•ä¸ªbuffer_nodeç»“æ„å ç”¨å†…å­˜å—å¤§å°
+	// sz ä¸ºç¼“å†²æ± çš„é•¿åº¦
 	int sz = lua_rawlen(L,1) / sizeof(*pool);
 	int i;
-	// ±éÀú
+	// éå†
 	for (i=0;i<sz;i++) {
 		struct buffer_node *node = &pool[i];
 		if (node->msg) {
@@ -66,12 +66,12 @@ lfreepool(lua_State *L) {
 	return 0;
 }
 
-// ĞÂ½¨»º³åÇø³Ø
-// Á´±íÊ½Êı×é±í
+// æ–°å»ºç¼“å†²åŒºæ± 
+// é“¾è¡¨å¼æ•°ç»„è¡¨
 static int
 lnewpool(lua_State *L, int sz) {
-	// ĞÂ½¨Ò»¿éÍêÈ«ÓÃ»§Êı¾İ£¬Ñ¹Õ»µ±×÷»º³åÇø³Ø
-	// ·ÖÅäÖ¸¶¨´óĞ¡µÄÄÚ´æ¿é£¬Õ»ÉÏ±£´æµÄÖ»ÊÇÄÚ´æµØÖ·
+	// æ–°å»ºä¸€å—å®Œå…¨ç”¨æˆ·æ•°æ®ï¼Œå‹æ ˆå½“ä½œç¼“å†²åŒºæ± 
+	// åˆ†é…æŒ‡å®šå¤§å°çš„å†…å­˜å—ï¼Œæ ˆä¸Šä¿å­˜çš„åªæ˜¯å†…å­˜åœ°å€
 	struct buffer_node * pool = lua_newuserdata(L, sizeof(struct buffer_node) * sz);
 	int i;
 	for (i=0;i<sz;i++) {
@@ -80,19 +80,19 @@ lnewpool(lua_State *L, int sz) {
 		pool[i].next = &pool[i+1];
 	}
 	pool[sz-1].next = NULL;
-	// buffer_pool Ôª±íÑ¹Õ»
+	// buffer_pool å…ƒè¡¨å‹æ ˆ
 	if (luaL_newmetatable(L, "buffer_pool")) {
-		// Èç¹ûÔª±íÖĞ²»´æÔÚbuffer_pool¼üÃû£¬ÎªÔª±í´´½¨Ò»ÕÅbuffer_pool¼üÃûµÄĞÂ±í
-		// ÎªĞÂ±íÉèÖÃ__gc·½·¨Îªlfreepool
+		// å¦‚æœå…ƒè¡¨ä¸­ä¸å­˜åœ¨buffer_poolé”®åï¼Œä¸ºå…ƒè¡¨åˆ›å»ºä¸€å¼ buffer_poolé”®åçš„æ–°è¡¨
+		// ä¸ºæ–°è¡¨è®¾ç½®__gcæ–¹æ³•ä¸ºlfreepool
 		lua_pushcfunction(L, lfreepool);
 		lua_setfield(L, -2, "__gc");
 	}
-	// °Ñbuffer_pool±íµ¯³öÕ»£¬²¢½«ÆäÉèÎªpoolµÄÔª±í
+	// æŠŠbuffer_poolè¡¨å¼¹å‡ºæ ˆï¼Œå¹¶å°†å…¶è®¾ä¸ºpoolçš„å…ƒè¡¨
 	lua_setmetatable(L, -2);
 	return 1;
 }
 
-// ĞÂ½¨»º³åÇøÁ´±í
+// æ–°å»ºç¼“å†²åŒºé“¾è¡¨
 // local buffer = driver.buffer()
 static int
 lnewbuffer(lua_State *L) {
@@ -125,46 +125,46 @@ lnewbuffer(lua_State *L) {
  // local sz = driver.push(s.buffer, buffer_pool, data, size)
 static int
 lpushbuffer(lua_State *L) {
-	// »ñÈ¡µÚÒ»¸ö²ÎÊıÖµ£¬»º³åÇøÁ´±í
+	// è·å–ç¬¬ä¸€ä¸ªå‚æ•°å€¼ï¼Œç¼“å†²åŒºé“¾è¡¨
 	struct socket_buffer *sb = lua_touserdata(L,1);
 	if (sb == NULL) {
 		return luaL_error(L, "need buffer object at param 1");
 	}
-	// »ñÈ¡µÚÈı¸ö²ÎÊıÖµ£¬ÏûÏ¢Êı¾İ
+	// è·å–ç¬¬ä¸‰ä¸ªå‚æ•°å€¼ï¼Œæ¶ˆæ¯æ•°æ®
 	char * msg = lua_touserdata(L,3);
 	if (msg == NULL) {
 		return luaL_error(L, "need message block at param 3");
 	}
 	int pool_index = 2;
-	// ¼ì²éµÚ¶ş¸ö²ÎÊıÊÇ·ñÎªtableÀàĞÍ
+	// æ£€æŸ¥ç¬¬äºŒä¸ªå‚æ•°æ˜¯å¦ä¸ºtableç±»å‹
 	/*
 		local buffer_pool = {}
-		buffer_poolÊÇÔÚlua²ã(socket.lua)ÖĞ´´½¨²¢³õÊ¼»¯¿Õ±í
-		lua·½·¨pop,push,readall,readline,clearÖĞ×÷ÎªµÚ¶ş¸ö²ÎÊı´«Èë
-		ÔÚlua°ó¶¨µÄc·½·¨ÖĞ£¬´ÓÕ»ÖĞÈ¡³öµÚ¶ş¸öÔªËØ£¬¼´¿ÉµÃµ½buffer_pool
+		buffer_poolæ˜¯åœ¨luaå±‚(socket.lua)ä¸­åˆ›å»ºå¹¶åˆå§‹åŒ–ç©ºè¡¨
+		luaæ–¹æ³•pop,push,readall,readline,clearä¸­ä½œä¸ºç¬¬äºŒä¸ªå‚æ•°ä¼ å…¥
+		åœ¨luaç»‘å®šçš„cæ–¹æ³•ä¸­ï¼Œä»æ ˆä¸­å–å‡ºç¬¬äºŒä¸ªå…ƒç´ ï¼Œå³å¯å¾—åˆ°buffer_pool
 
-		buffer_pool[1]£¬´æ·ÅµÄÊÇÒ»¸ölightuserdata£¬¼´»º³åÇø³ØµÚÒ»¸ö½ÚµãµÄµØÖ·£¬¼ûlua_pushlightuserdata(L, free_node->next);	
-		buffer_pool[2] ...£¬´æ·ÅµÄÊÇuserdata£¬¼´¹Ì¶¨´óĞ¡µÄÁ´±íÊı×éÄÚ´æµØÖ·£¬¼ûlua_rawseti(L, pool_index, tsz+1);
+		buffer_pool[1]ï¼Œå­˜æ”¾çš„æ˜¯ä¸€ä¸ªlightuserdataï¼Œå³ç¼“å†²åŒºæ± ç¬¬ä¸€ä¸ªèŠ‚ç‚¹çš„åœ°å€ï¼Œè§lua_pushlightuserdata(L, free_node->next);	
+		buffer_pool[2] ...ï¼Œå­˜æ”¾çš„æ˜¯userdataï¼Œå³å›ºå®šå¤§å°çš„é“¾è¡¨æ•°ç»„å†…å­˜åœ°å€ï¼Œè§lua_rawseti(L, pool_index, tsz+1);
 	*/
 	luaL_checktype(L,pool_index,LUA_TTABLE);
-	// »ñÈ¡µÚËÄ¸ö²ÎÊıÖµ£¬ÏûÏ¢³¤¶È
+	// è·å–ç¬¬å››ä¸ªå‚æ•°å€¼ï¼Œæ¶ˆæ¯é•¿åº¦
 	int sz = luaL_checkinteger(L,4);
-	// °Ñ»º³å³Ølua±íµÄµÚÒ»¸öÔªËØÑ¹Õ»
+	// æŠŠç¼“å†²æ± luaè¡¨çš„ç¬¬ä¸€ä¸ªå…ƒç´ å‹æ ˆ
 	lua_rawgeti(L,pool_index,1);
-	// »ñÈ¡»º³å³Ølua±íµÄµÚÒ»¸öÔªËØ
-	// ×¼È·µØËµÊÇ »ñÈ¡µÚÒ»¸öÔªËØ´æ·ÅµÄÖ¸Õë ËùÖ¸ÏòµÄÒ»¶ÎÍêÈ«ÓÃ»§Êı¾İ ÆäÊµ¾ÍÊÇÒ»¸ö»º³åÇø½Úµã
+	// è·å–ç¼“å†²æ± luaè¡¨çš„ç¬¬ä¸€ä¸ªå…ƒç´ 
+	// å‡†ç¡®åœ°è¯´æ˜¯ è·å–ç¬¬ä¸€ä¸ªå…ƒç´ å­˜æ”¾çš„æŒ‡é’ˆ æ‰€æŒ‡å‘çš„ä¸€æ®µå®Œå…¨ç”¨æˆ·æ•°æ® å…¶å®å°±æ˜¯ä¸€ä¸ªç¼“å†²åŒºèŠ‚ç‚¹
 	struct buffer_node * free_node = lua_touserdata(L,-1);	// sb poolt msg size free_node
-	// °Ñ»º³å³Ølua±íµÄµÚÒ»¸öÔªËØµ¯³öÕ»
+	// æŠŠç¼“å†²æ± luaè¡¨çš„ç¬¬ä¸€ä¸ªå…ƒç´ å¼¹å‡ºæ ˆ
 	lua_pop(L,1);
 	if (free_node == NULL) {
-		// Èç¹û»ñÈ¡µ½µÄ»º³åÇø½ÚµãÎª¿Õ£¬ËµÃ÷buffer_pool[n]ÀïµÄbuffer_nodeÒÑ¾­ÓÃ¹â
+		// å¦‚æœè·å–åˆ°çš„ç¼“å†²åŒºèŠ‚ç‚¹ä¸ºç©ºï¼Œè¯´æ˜buffer_pool[n]é‡Œçš„buffer_nodeå·²ç»ç”¨å…‰
 
-		// »ñÈ¡buffer_pool±íµÄ³¤¶È
-		// ³õÊ¼Îª0£¬Ò»Ö±µİÔö£¬Ö±µ½vmÖØÆô
+		// è·å–buffer_poolè¡¨çš„é•¿åº¦
+		// åˆå§‹ä¸º0ï¼Œä¸€ç›´é€’å¢ï¼Œç›´åˆ°vmé‡å¯
 		/*
-			tsz buffer_pool±íµÄ³¤¶È
-			index buffer_pool±íµÄË÷Òı
-			size buffer_pool[index]´æ·Åbuffer_nodeµÄÊıÁ¿
+			tsz buffer_poolè¡¨çš„é•¿åº¦
+			index buffer_poolè¡¨çš„ç´¢å¼•
+			size buffer_pool[index]å­˜æ”¾buffer_nodeçš„æ•°é‡
 		
 			tsz  size          index
 			0    8 << 1 = 16   2
@@ -177,36 +177,36 @@ lpushbuffer(lua_State *L) {
 		*/
 		int tsz = lua_rawlen(L,pool_index);
 		if (tsz == 0)
-			// ³õÊ¼Îª0£¬Ô¤Áôbuffer_pool[1]´æ·Ålightuserdata
+			// åˆå§‹ä¸º0ï¼Œé¢„ç•™buffer_pool[1]å­˜æ”¾lightuserdata
 			tsz++;
 		int size = 8;
 		if (tsz <= LARGE_PAGE_NODE-3) {
 			size <<= tsz;
 		} else {
-			// ²»³¬¹ı4096£¬¼´2µÄ12´Î·½
+			// ä¸è¶…è¿‡4096ï¼Œå³2çš„12æ¬¡æ–¹
 			size <<= LARGE_PAGE_NODE-3;
 		}
-		// ĞÂ½¨»º³åÇø³Ø
+		// æ–°å»ºç¼“å†²åŒºæ± 
 		// struct buffer_node * pool = lua_newuserdata(L, sizeof(struct buffer_node) * sz);
 		lnewpool(L, size);	
-		// »ñÈ¡ĞÂ½¨»º³åÇø³ØµÚÒ»¸ö»º³åÇø½Úµã
+		// è·å–æ–°å»ºç¼“å†²åŒºæ± ç¬¬ä¸€ä¸ªç¼“å†²åŒºèŠ‚ç‚¹
 		free_node = lua_touserdata(L,-1);
-		// °ÑĞÂ½¨µÄ»º³åÇø³Ø·Åµ½»º³åÇø³Ølua±íµÄÌØ¶¨Ë÷ÒıÖĞ
+		// æŠŠæ–°å»ºçš„ç¼“å†²åŒºæ± æ”¾åˆ°ç¼“å†²åŒºæ± luaè¡¨çš„ç‰¹å®šç´¢å¼•ä¸­
 		lua_rawseti(L, pool_index, tsz+1);
 	}
-	// °Ñ»º³å³Ølua±íµÄµÚÒ»¸öÔªËØµÄÏÂÒ»¸öÔªËØÑ¹Õ»
+	// æŠŠç¼“å†²æ± luaè¡¨çš„ç¬¬ä¸€ä¸ªå…ƒç´ çš„ä¸‹ä¸€ä¸ªå…ƒç´ å‹æ ˆ
 	lua_pushlightuserdata(L, free_node->next);	
-	// °Ñ»º³å³Ølua±íµÄµÚÒ»¸öÔªËØµÄÏÂÒ»¸öÔªËØÉèÖÃÎªlua±íµÄµÚÒ»¸öÔªËØ£¬²¢µ¯³öÕ»
+	// æŠŠç¼“å†²æ± luaè¡¨çš„ç¬¬ä¸€ä¸ªå…ƒç´ çš„ä¸‹ä¸€ä¸ªå…ƒç´ è®¾ç½®ä¸ºluaè¡¨çš„ç¬¬ä¸€ä¸ªå…ƒç´ ï¼Œå¹¶å¼¹å‡ºæ ˆ
 	lua_rawseti(L, pool_index, 1);	// sb poolt msg size
 
-	// ÒÔÉÏ²Ù×÷´Ó»º³å³ØÖĞÈ¡³öÁËÒ»¸ö»º³åÇø½Úµã
+	// ä»¥ä¸Šæ“ä½œä»ç¼“å†²æ± ä¸­å–å‡ºäº†ä¸€ä¸ªç¼“å†²åŒºèŠ‚ç‚¹
 
-	// »º³åÇø½Úµã×°ÈëÊı¾İ
+	// ç¼“å†²åŒºèŠ‚ç‚¹è£…å…¥æ•°æ®
 	free_node->msg = msg;
 	free_node->sz = sz;
 	free_node->next = NULL;
 
-	// »º³åÇø½Úµã¼ÓÈëÁ´±í
+	// ç¼“å†²åŒºèŠ‚ç‚¹åŠ å…¥é“¾è¡¨
 	if (sb->head == NULL) {
 		assert(sb->tail == NULL);
 		sb->head = sb->tail = free_node;
@@ -216,107 +216,107 @@ lpushbuffer(lua_State *L) {
 	}
 	sb->size += sz;
 
-	// »º³åÇøÁ´±íÊı¾İ×Ü³¤¶ÈÑ¹Õ»²¢×÷Îªlua·µ»ØÖµ
+	// ç¼“å†²åŒºé“¾è¡¨æ•°æ®æ€»é•¿åº¦å‹æ ˆå¹¶ä½œä¸ºluaè¿”å›å€¼
 	lua_pushinteger(L, sb->size);
 
 	return 1;
 }
 
-// ¹é»¹Í·Ö¸Õë»º³åÇø½Úµã¸ø»º³å³Ø
-// pool »º³åÇø³ØÔÚÕ»ÉÏµÄË÷Òı
+// å½’è¿˜å¤´æŒ‡é’ˆç¼“å†²åŒºèŠ‚ç‚¹ç»™ç¼“å†²æ± 
+// pool ç¼“å†²åŒºæ± åœ¨æ ˆä¸Šçš„ç´¢å¼•
 static void
 return_free_node(lua_State *L, int pool, struct socket_buffer *sb) {
- 	// ĞŞ¸ÄheadÖ¸ÕëÎªÏÂÒ»¸ö»º³åÇø½Úµã
+ 	// ä¿®æ”¹headæŒ‡é’ˆä¸ºä¸‹ä¸€ä¸ªç¼“å†²åŒºèŠ‚ç‚¹
 	struct buffer_node *free_node = sb->head;
 	sb->offset = 0;
 	sb->head = free_node->next;
 	if (sb->head == NULL) {
-		// Èç¹ûÃ»ÓĞÏÂÒ»¸ö½Úµã£¬headºÍtailË÷Òı¾ù¸³ÖµÎªNULL
+		// å¦‚æœæ²¡æœ‰ä¸‹ä¸€ä¸ªèŠ‚ç‚¹ï¼Œheadå’Œtailç´¢å¼•å‡èµ‹å€¼ä¸ºNULL
 		sb->tail = NULL;
 	}
-	// °Ñ»º³å³Ølua±íµÄµÚÒ»¸öÔªËØÑ¹Õ»
+	// æŠŠç¼“å†²æ± luaè¡¨çš„ç¬¬ä¸€ä¸ªå…ƒç´ å‹æ ˆ
 	lua_rawgeti(L,pool,1);
-	// °Ñ»º³å³Ølua±íµÄµÚÒ»¸öÔªËØÉèÖÃÎªÒª¹é»¹µÄ»º³åÇø½ÚµãµÄÏÂÒ»¸öÔªËØ
+	// æŠŠç¼“å†²æ± luaè¡¨çš„ç¬¬ä¸€ä¸ªå…ƒç´ è®¾ç½®ä¸ºè¦å½’è¿˜çš„ç¼“å†²åŒºèŠ‚ç‚¹çš„ä¸‹ä¸€ä¸ªå…ƒç´ 
 	free_node->next = lua_touserdata(L,-1);
-	// °Ñ»º³å³Ølua±íµÄµÚÒ»¸öÔªËØµ¯³öÕ»
+	// æŠŠç¼“å†²æ± luaè¡¨çš„ç¬¬ä¸€ä¸ªå…ƒç´ å¼¹å‡ºæ ˆ
 	lua_pop(L,1);
-	// ÇåÀíÒª¹é»¹µÄ»º³åÇø½ÚµãµÄÊôĞÔºÍÄÚ´æ
+	// æ¸…ç†è¦å½’è¿˜çš„ç¼“å†²åŒºèŠ‚ç‚¹çš„å±æ€§å’Œå†…å­˜
 	skynet_free(free_node->msg);
 	free_node->msg = NULL;
 
 	free_node->sz = 0;
-	// °ÑÒª¹é»¹µÄ»º³åÇø½ÚµãÑ¹Õ»
+	// æŠŠè¦å½’è¿˜çš„ç¼“å†²åŒºèŠ‚ç‚¹å‹æ ˆ
 	lua_pushlightuserdata(L, free_node);
-	// °ÑÒª¹é»¹µÄ»º³åÇø½ÚµãÉèÖÃÎªlua±íµÄµÚÒ»¸öÔªËØ£¬²¢µ¯³öÕ»
+	// æŠŠè¦å½’è¿˜çš„ç¼“å†²åŒºèŠ‚ç‚¹è®¾ç½®ä¸ºluaè¡¨çš„ç¬¬ä¸€ä¸ªå…ƒç´ ï¼Œå¹¶å¼¹å‡ºæ ˆ
 	lua_rawseti(L, pool, 1);
 }
 
-// sz ĞèÒª¶ÁµÄÊı¾İ³¤¶È
-// skip ĞèÒªÌø¹ıµÄÊı¾İ³¤¶È ±ÈÈç\nµÄ³¤¶È
+// sz éœ€è¦è¯»çš„æ•°æ®é•¿åº¦
+// skip éœ€è¦è·³è¿‡çš„æ•°æ®é•¿åº¦ æ¯”å¦‚\nçš„é•¿åº¦
 static void
 pop_lstring(lua_State *L, struct socket_buffer *sb, int sz, int skip) {
 	struct buffer_node * current = sb->head;
 	if (sz < current->sz - sb->offset) {
-		// Èç¹ûĞèÒª¶ÁµÄ³¤¶ÈĞ¡ÓÚÊ£Óà¿É¶ÁµÄ³¤¶È
-		// °Ñ»º³åÇøÊı¾İÑ¹ÈëÕ»ÖĞ×÷Îªlua·µ»ØÖµ
+		// å¦‚æœéœ€è¦è¯»çš„é•¿åº¦å°äºå‰©ä½™å¯è¯»çš„é•¿åº¦
+		// æŠŠç¼“å†²åŒºæ•°æ®å‹å…¥æ ˆä¸­ä½œä¸ºluaè¿”å›å€¼
 		lua_pushlstring(L, current->msg + sb->offset, sz-skip);
-		// Æ«ÒÆÁ¿Ôö¼Ó
+		// åç§»é‡å¢åŠ 
 		sb->offset+=sz;
 		return;
 	}
 	if (sz == current->sz - sb->offset) {
-		// Èç¹ûĞèÒª¶ÁµÄ³¤¶ÈµÈÓÚÊ£Óà¿É¶ÁµÄ³¤¶È
-		// °Ñ»º³åÇøÊı¾İÑ¹ÈëÕ»ÖĞ×÷Îªlua·µ»ØÖµ
+		// å¦‚æœéœ€è¦è¯»çš„é•¿åº¦ç­‰äºå‰©ä½™å¯è¯»çš„é•¿åº¦
+		// æŠŠç¼“å†²åŒºæ•°æ®å‹å…¥æ ˆä¸­ä½œä¸ºluaè¿”å›å€¼
 		lua_pushlstring(L, current->msg + sb->offset, sz-skip);
-		// µ±Ç°»º³åÇø½ÚµãÒÑ¶ÁÍê£¬¹é»¹»º³åÇø½Úµãµ½»º³å³Ø
+		// å½“å‰ç¼“å†²åŒºèŠ‚ç‚¹å·²è¯»å®Œï¼Œå½’è¿˜ç¼“å†²åŒºèŠ‚ç‚¹åˆ°ç¼“å†²æ± 
 		return_free_node(L,2,sb);
 		return;
 	}
 
-	// ×Ö·û´®»º´æ¿ÉÒÔÈÃc´úÂë·Ö¶Î¹¹ÔìÒ»¸öLua×Ö·û´®
+	// å­—ç¬¦ä¸²ç¼“å­˜å¯ä»¥è®©cä»£ç åˆ†æ®µæ„é€ ä¸€ä¸ªLuaå­—ç¬¦ä¸²
 
-	// ¶¨ÒåÒ»¸ö×Ö·û´®»º´æ
+	// å®šä¹‰ä¸€ä¸ªå­—ç¬¦ä¸²ç¼“å­˜
 	luaL_Buffer b;
-	// ³õÊ¼»¯×Ö·û´®»º´æ
+	// åˆå§‹åŒ–å­—ç¬¦ä¸²ç¼“å­˜
 	luaL_buffinit(L, &b);
 
-	// Ñ­»·¶ÁÈ¡»º³åÇøÁ´±íµÄÊı¾İ
+	// å¾ªç¯è¯»å–ç¼“å†²åŒºé“¾è¡¨çš„æ•°æ®
 	for (;;) {
-		// µ±Ç°»º³åÇø½Úµã¿É¶ÁÊı¾İ³¤¶È
+		// å½“å‰ç¼“å†²åŒºèŠ‚ç‚¹å¯è¯»æ•°æ®é•¿åº¦
 		int bytes = current->sz - sb->offset;
 		if (bytes >= sz) {
-			// Èç¹ûĞèÒª¶ÁµÄ³¤¶ÈĞ¡ÓÚÊ£Óà¿É¶ÁµÄ³¤¶È
-			// ¸Õ¿ªÊ¼½øÈëÑ­»·£¬²»»á×ßÕâ¶ÎÂß¼­£¬Ê×½Úµã´ËÖÖÇé¿öÒÑ´¦Àí£¬´Ëºó±éÀúµÄ½ÚµãÈÔ¿ÉÄÜ³öÏÖ´ËÖÖÇé¿ö
+			// å¦‚æœéœ€è¦è¯»çš„é•¿åº¦å°äºå‰©ä½™å¯è¯»çš„é•¿åº¦
+			// åˆšå¼€å§‹è¿›å…¥å¾ªç¯ï¼Œä¸ä¼šèµ°è¿™æ®µé€»è¾‘ï¼Œé¦–èŠ‚ç‚¹æ­¤ç§æƒ…å†µå·²å¤„ç†ï¼Œæ­¤åéå†çš„èŠ‚ç‚¹ä»å¯èƒ½å‡ºç°æ­¤ç§æƒ…å†µ
 			if (sz > skip) {
-				// °Ñ»º³åÇøÊı¾İ·ÅÈë×Ö·û´®»º´æ
+				// æŠŠç¼“å†²åŒºæ•°æ®æ”¾å…¥å­—ç¬¦ä¸²ç¼“å­˜
 				luaL_addlstring(&b, current->msg + sb->offset, sz - skip);
 			} 
-			// Æ«ÒÆÁ¿Ôö¼Ó
+			// åç§»é‡å¢åŠ 
 			sb->offset += sz;
 			if (bytes == sz) {
-				// Èç¹ûÕıºÃÈ«²¿¶ÁÍê£¬¹é»¹»º³åÇø½Úµãµ½»º³å³Ø
+				// å¦‚æœæ­£å¥½å…¨éƒ¨è¯»å®Œï¼Œå½’è¿˜ç¼“å†²åŒºèŠ‚ç‚¹åˆ°ç¼“å†²æ± 
 				return_free_node(L,2,sb);
 			}
-			// ĞèÒª¶ÁµÄÒÑ¶ÁÍê£¬Ìø³öÑ­»·²»±ØÔÙ¶Á
+			// éœ€è¦è¯»çš„å·²è¯»å®Œï¼Œè·³å‡ºå¾ªç¯ä¸å¿…å†è¯»
 			break;
 		}
-		// Êµ¼ÊÒª¶ÁµÄÊı¾İ³¤¶È£¬³ısep·Ö¸ô·ûÖ®Íâ
+		// å®é™…è¦è¯»çš„æ•°æ®é•¿åº¦ï¼Œé™¤sepåˆ†éš”ç¬¦ä¹‹å¤–
 		int real_sz = sz - skip;
 		if (real_sz > 0) {
-			// °Ñ»º³åÇøÊı¾İ·ÅÈë×Ö·û´®»º´æ
+			// æŠŠç¼“å†²åŒºæ•°æ®æ”¾å…¥å­—ç¬¦ä¸²ç¼“å­˜
 			luaL_addlstring(&b, current->msg + sb->offset, (real_sz < bytes) ? real_sz : bytes);
 		}
-		// µ±Ç°»º³åÇø½ÚµãÒÑ¶ÁÍê£¬¹é»¹»º³åÇø½Úµãµ½»º³å³Ø
+		// å½“å‰ç¼“å†²åŒºèŠ‚ç‚¹å·²è¯»å®Œï¼Œå½’è¿˜ç¼“å†²åŒºèŠ‚ç‚¹åˆ°ç¼“å†²æ± 
 		return_free_node(L,2,sb);
 		sz-=bytes;
 		if (sz==0)
-			// Èç¹ûÈ«²¿¶ÁÍê£¬Ìø³öÑ­»·²»±ØÔÙ¶Á
+			// å¦‚æœå…¨éƒ¨è¯»å®Œï¼Œè·³å‡ºå¾ªç¯ä¸å¿…å†è¯»
 			break;
-		// »»ÏÂÒ»¸ö»º³åÇø½Úµã
+		// æ¢ä¸‹ä¸€ä¸ªç¼“å†²åŒºèŠ‚ç‚¹
 		current = sb->head;
 		assert(current);
 	}
-	// ½áÊø¶Ô×Ö·û´®»º´æµÄÊ¹ÓÃ£¬½«×îÖÕµÄ×Ö·û´®ÁôÔÚÕ»¶¥
+	// ç»“æŸå¯¹å­—ç¬¦ä¸²ç¼“å­˜çš„ä½¿ç”¨ï¼Œå°†æœ€ç»ˆçš„å­—ç¬¦ä¸²ç•™åœ¨æ ˆé¡¶
 	luaL_pushresult(&b);
 }
 
@@ -327,7 +327,7 @@ static int
 lheader(lua_State *L) {
 	size_t len;
 	const uint8_t * s = (const uint8_t *)luaL_checklstring(L, 1, &len);
-	// 1-4¸ö×Ö½Ú
+	// 1-4ä¸ªå­—èŠ‚
 	if (len > 4 || len < 1) {
 		return luaL_error(L, "Invalid read %s", s);
 	}
@@ -360,13 +360,13 @@ lpopbuffer(lua_State *L) {
 	luaL_checktype(L,2,LUA_TTABLE);
 	int sz = luaL_checkinteger(L,3);
 	if (sb->size < sz || sz == 0) {
-		// Èç¹ûÎŞÊı¾İ¿É¶Á£¬·µ»Ønil
+		// å¦‚æœæ— æ•°æ®å¯è¯»ï¼Œè¿”å›nil
 		lua_pushnil(L);
 	} else {
 		pop_lstring(L,sb,sz,0);
 		sb->size -= sz;
 	}
-	// °Ñ»º³åÇøÁ´±íÊ£ÓàÊı¾İ³¤¶ÈÑ¹Õ»×÷ÎªluaµÄµÚ¶ş¸ö·µ»ØÖµ
+	// æŠŠç¼“å†²åŒºé“¾è¡¨å‰©ä½™æ•°æ®é•¿åº¦å‹æ ˆä½œä¸ºluaçš„ç¬¬äºŒä¸ªè¿”å›å€¼
 	lua_pushinteger(L, sb->size);
 
 	return 2;
@@ -385,7 +385,7 @@ lclearbuffer(lua_State *L) {
 	}
 	luaL_checktype(L,2,LUA_TTABLE);
 	while(sb->head) {
-		// ÒÀ´Î¹é»¹ËùÓĞ»º³åÇø½Úµã
+		// ä¾æ¬¡å½’è¿˜æ‰€æœ‰ç¼“å†²åŒºèŠ‚ç‚¹
 		return_free_node(L,2,sb);
 	}
 	sb->size = 0;
@@ -403,14 +403,14 @@ lreadall(lua_State *L) {
 	luaL_checktype(L,2,LUA_TTABLE);
 	luaL_Buffer b;
 	luaL_buffinit(L, &b);
-	// ±éÀú»º³åÇøÁ´±í
+	// éå†ç¼“å†²åŒºé“¾è¡¨
 	while(sb->head) {
 		struct buffer_node *current = sb->head;
-		// °Ñ»º³åÇø½ÚµãµÄËùÓĞÊı¾İ¶¼·ÅÈë×Ö·û´®»º´æ
+		// æŠŠç¼“å†²åŒºèŠ‚ç‚¹çš„æ‰€æœ‰æ•°æ®éƒ½æ”¾å…¥å­—ç¬¦ä¸²ç¼“å­˜
 		luaL_addlstring(&b, current->msg + sb->offset, current->sz - sb->offset);
 		return_free_node(L,2,sb);
 	}
-	// ½áÊø¶Ô×Ö·û´®»º´æµÄÊ¹ÓÃ£¬½«×îÖÕµÄ×Ö·û´®ÁôÔÚÕ»¶¥£¬×÷Îªlua·µ»ØÖµ
+	// ç»“æŸå¯¹å­—ç¬¦ä¸²ç¼“å­˜çš„ä½¿ç”¨ï¼Œå°†æœ€ç»ˆçš„å­—ç¬¦ä¸²ç•™åœ¨æ ˆé¡¶ï¼Œä½œä¸ºluaè¿”å›å€¼
 	luaL_pushresult(&b);
 	sb->size = 0;
 	return 1;
@@ -421,19 +421,19 @@ static int
 ldrop(lua_State *L) {
 	void * msg = lua_touserdata(L,1);
 	luaL_checkinteger(L,2);
-	// ÇåÀíÄÚ´æ¿Õ¼ä
+	// æ¸…ç†å†…å­˜ç©ºé—´
 	skynet_free(msg);
 	return 0;
 }
 
-// ¼ì²â»º³åÇøÁĞ±íÖĞÊÇ·ñÓĞsep·Ö¸ô·û
+// æ£€æµ‹ç¼“å†²åŒºåˆ—è¡¨ä¸­æ˜¯å¦æœ‰sepåˆ†éš”ç¬¦
 static bool
 check_sep(struct buffer_node * node, int from, const char *sep, int seplen) {
 	for (;;) {
-		// ¿É¶ÁÊı¾İ³¤¶È
+		// å¯è¯»æ•°æ®é•¿åº¦
 		int sz = node->sz - from;
 		if (sz >= seplen) {
-			// Êı¾İÊÇ·ñÒÔsep¿ªÍ·
+			// æ•°æ®æ˜¯å¦ä»¥sepå¼€å¤´
 			return memcmp(node->msg+from,sep,seplen) == 0;
 		}
 		if (sz > 0) {
@@ -455,8 +455,8 @@ check_sep(struct buffer_node * node, int from, const char *sep, int seplen) {
  */
 // local ret = driver.readline(s.buffer, buffer_pool, sep)
 // return msg/true/nil
-// buffer_pool »º³å³Ø£¬Èç¹û´«Èënil ·µ»ØÊÇ·ñ´æÔÚ·Ö¸ô·û£¬Èç¹û´«Èëtable£¬·µ»Ø¶ÁÈëµÄ»º³åÇøÊı¾İ
-// sep ·Ö¸ô·û ±ÈÈç\n
+// buffer_pool ç¼“å†²æ± ï¼Œå¦‚æœä¼ å…¥nil è¿”å›æ˜¯å¦å­˜åœ¨åˆ†éš”ç¬¦ï¼Œå¦‚æœä¼ å…¥tableï¼Œè¿”å›è¯»å…¥çš„ç¼“å†²åŒºæ•°æ®
+// sep åˆ†éš”ç¬¦ æ¯”å¦‚\n
 static int
 lreadline(lua_State *L) {
 	struct socket_buffer * sb = lua_touserdata(L, 1);
@@ -464,25 +464,25 @@ lreadline(lua_State *L) {
 		return luaL_error(L, "Need buffer object at param 1");
 	}
 	// only check
-	// Èç¹ûµÚ¶ş¸ö²ÎÊıÊÇlua table£¬checkÎªfalse£¬·ñÔòcheckÎªtrue
+	// å¦‚æœç¬¬äºŒä¸ªå‚æ•°æ˜¯lua tableï¼Œcheckä¸ºfalseï¼Œå¦åˆ™checkä¸ºtrue
 	bool check = !lua_istable(L, 2);
 	size_t seplen = 0;
-	// »ñÈ¡µÚÈı¸ö²ÎÊıÖµ£¬·Ö¸ô·û×Ö·û´®£¬Í¬Ê±»ñÈ¡Æä³¤¶È
+	// è·å–ç¬¬ä¸‰ä¸ªå‚æ•°å€¼ï¼Œåˆ†éš”ç¬¦å­—ç¬¦ä¸²ï¼ŒåŒæ—¶è·å–å…¶é•¿åº¦
 	const char *sep = luaL_checklstring(L,3,&seplen);
 	int i;
 	struct buffer_node *current = sb->head;
 	if (current == NULL)
 		return 0;
 	int from = sb->offset;
-	// µ±Ç°»º³åÇø½Úµã¿É¶ÁÊı¾İ³¤¶È
+	// å½“å‰ç¼“å†²åŒºèŠ‚ç‚¹å¯è¯»æ•°æ®é•¿åº¦
 	int bytes = current->sz - from;
 	for (i=0;i<=sb->size - (int)seplen;i++) {
 		if (check_sep(current, from, sep, seplen)) {
-			// Èç¹ûÓĞ·Ö¸ô·û
+			// å¦‚æœæœ‰åˆ†éš”ç¬¦
 			if (check) {
-				// Èç¹ûÃ»ÓĞ´«Èëbuffer_pool²ÎÊı£¬Ôò·µ»Øtrue
+				// å¦‚æœæ²¡æœ‰ä¼ å…¥buffer_poolå‚æ•°ï¼Œåˆ™è¿”å›true
 				/*
-					±ÈÈç socket.lua
+					æ¯”å¦‚ socket.lua
 					if driver.readline(s.buffer, nil, rr) then
 						s.read_required = nil
 						wakeup(s)
@@ -490,26 +490,26 @@ lreadline(lua_State *L) {
 				*/
 				lua_pushboolean(L,true);
 			} else {
-				// ¶ÁÈë»º³åÇøÊı¾İ²¢Ñ¹Õ»×÷Îªlua·µ»ØÖµ
+				// è¯»å…¥ç¼“å†²åŒºæ•°æ®å¹¶å‹æ ˆä½œä¸ºluaè¿”å›å€¼
 				pop_lstring(L, sb, i+seplen, seplen);
 				sb->size -= i+seplen;
 			}
 			return 1;
 		}
-		// Èç¹ûÃ»ÓĞ·Ö¸ô·û£¬ÒÆ¶¯Ò»¸ö×Ö·û¼ÌĞø¼ìË÷
+		// å¦‚æœæ²¡æœ‰åˆ†éš”ç¬¦ï¼Œç§»åŠ¨ä¸€ä¸ªå­—ç¬¦ç»§ç»­æ£€ç´¢
 		++from;
 		--bytes;
 		if (bytes == 0) {
-			// ¶ÁÍêÒ»¸ö»º³åÇø½Úµã£¬»»ÏÂÒ»¸ö»º³åÇø½Úµã
+			// è¯»å®Œä¸€ä¸ªç¼“å†²åŒºèŠ‚ç‚¹ï¼Œæ¢ä¸‹ä¸€ä¸ªç¼“å†²åŒºèŠ‚ç‚¹
 			current = current->next;
 			from = 0;
 			if (current == NULL)
-				// ÏÂÒ»¸öÎª¿Õ£¬Ìø³öÑ­»·
+				// ä¸‹ä¸€ä¸ªä¸ºç©ºï¼Œè·³å‡ºå¾ªç¯
 				break;
 			bytes = current->sz;
 		}
 	}
-	// Èç¹ûÃ»ÓĞ·Ö¸ô·û£¬Ã»ÓĞ·µ»Ø²ÎÊı
+	// å¦‚æœæ²¡æœ‰åˆ†éš”ç¬¦ï¼Œæ²¡æœ‰è¿”å›å‚æ•°
 	return 0;
 }
 
@@ -541,21 +541,21 @@ lunpack(lua_State *L) {
 	struct skynet_socket_message *message = lua_touserdata(L,1);
 	int size = luaL_checkinteger(L,2);
 
-	// °ÑÏûÏ¢µÄÊôĞÔÑ¹Õ»×÷Îªlua·µ»ØÖµ
+	// æŠŠæ¶ˆæ¯çš„å±æ€§å‹æ ˆä½œä¸ºluaè¿”å›å€¼
 	lua_pushinteger(L, message->type);
 	lua_pushinteger(L, message->id);
 	lua_pushinteger(L, message->ud);
 	if (message->buffer == NULL) {
-		// paddingµÄÊı¾İ 
-		// SOCKET_OPEN SOCKET_ACCEPT SOCKET_ERROR Ã»ÓĞ°ÑdataÊı¾İĞ´Èë»º³åÇø£¬¶øÊÇ·ÅÈëÖ®ºóµÄÄÚ´æ¿Õ¼ä
-		// °ÑpaddingµÄÊı¾İÑ¹Õ»×÷Îªlua·µ»ØÖµ
+		// paddingçš„æ•°æ® 
+		// SOCKET_OPEN SOCKET_ACCEPT SOCKET_ERROR æ²¡æœ‰æŠŠdataæ•°æ®å†™å…¥ç¼“å†²åŒºï¼Œè€Œæ˜¯æ”¾å…¥ä¹‹åçš„å†…å­˜ç©ºé—´
+		// æŠŠpaddingçš„æ•°æ®å‹æ ˆä½œä¸ºluaè¿”å›å€¼
 		lua_pushlstring(L, (char *)(message+1),size - sizeof(*message));
 	} else {
-		// °ÑÏûÏ¢»º³åÇøÖ¸ÕëÑ¹Õ»×÷Îªlua·µ»ØÖµ
+		// æŠŠæ¶ˆæ¯ç¼“å†²åŒºæŒ‡é’ˆå‹æ ˆä½œä¸ºluaè¿”å›å€¼
 		lua_pushlightuserdata(L, message->buffer);
 	}
 	if (message->type == SKYNET_SOCKET_TYPE_UDP) {
-		// Èç¹ûÏûÏ¢ÊÇudpÀàĞÍ£¬°ÑUDPµØÖ·Ñ¹Õ»×÷Îªlua·µ»ØÖµ
+		// å¦‚æœæ¶ˆæ¯æ˜¯udpç±»å‹ï¼ŒæŠŠUDPåœ°å€å‹æ ˆä½œä¸ºluaè¿”å›å€¼
 		int addrsz = 0;
 		const char * addrstring = skynet_socket_udp_address(message, &addrsz);
 		if (addrstring) {
@@ -570,7 +570,7 @@ static const char *
 address_port(lua_State *L, char *tmp, const char * addr, int port_index, int *port) {
 	const char * host;
 	if (lua_isnoneornil(L,port_index)) {
-		// Èç¹ûportÖµÎª¿Õ
+		// å¦‚æœportå€¼ä¸ºç©º
 		host = strchr(addr, '[');
 		if (host) {
 			// is ipv6
@@ -601,7 +601,7 @@ address_port(lua_State *L, char *tmp, const char * addr, int port_index, int *po
 			*port = strtoul(sep+1,NULL,10);
 		}
 	} else {
-		// Èç¹ûportÖµ²»Îª¿Õ£¬Ö±½ÓÈ¡³öÕûÊıÖµ£¬Ä¬ÈÏÎª0
+		// å¦‚æœportå€¼ä¸ä¸ºç©ºï¼Œç›´æ¥å–å‡ºæ•´æ•°å€¼ï¼Œé»˜è®¤ä¸º0
 		host = addr;
 		*port = luaL_optinteger(L,port_index, 0);
 	}
@@ -685,7 +685,7 @@ llisten(lua_State *L) {
 	return 1;
 }
 
-// ¼ÆËãlua tableµÄ³¤¶È
+// è®¡ç®—lua tableçš„é•¿åº¦
 static size_t
 count_size(lua_State *L, int index) {
 	size_t tlen = 0;
@@ -700,7 +700,7 @@ count_size(lua_State *L, int index) {
 	return tlen;
 }
 
-// °Ñlua tableÁ¬½Ó³É×Ö·û´®
+// æŠŠlua tableè¿æ¥æˆå­—ç¬¦ä¸²
 static void
 concat_table(lua_State *L, int index, void *buffer, size_t tlen) {
 	char *ptr = buffer;
@@ -946,7 +946,7 @@ luaopen_socketdriver(lua_State *L) {
 		{ "unpack", lunpack },
 		{ NULL, NULL },
 	};
-	// ´´½¨Ò»ÕÅĞÂµÄ±í£¬²¢°ÑÁĞ±í l ÖĞµÄº¯Êı×¢²á½øÈ¥
+	// åˆ›å»ºä¸€å¼ æ–°çš„è¡¨ï¼Œå¹¶æŠŠåˆ—è¡¨ l ä¸­çš„å‡½æ•°æ³¨å†Œè¿›å»
 	luaL_newlib(L,l);
 	luaL_Reg l2[] = {
 		{ "connect", lconnect },
@@ -964,15 +964,15 @@ luaopen_socketdriver(lua_State *L) {
 		{ "udp_address", ludp_address },
 		{ NULL, NULL },
 	};
-	// °Ñ×¢²á±í±äÁ¿skynet_contextÑ¹ÈëÕ»ÖĞ
+	// æŠŠæ³¨å†Œè¡¨å˜é‡skynet_contextå‹å…¥æ ˆä¸­
 	lua_getfield(L, LUA_REGISTRYINDEX, "skynet_context");
 	struct skynet_context *ctx = lua_touserdata(L,-1);
-	// »ñÈ¡²¢ÅĞ¶Ï·Ç¿Õ
+	// è·å–å¹¶åˆ¤æ–­éç©º
 	if (ctx == NULL) {
 		return luaL_error(L, "Init skynet context first");
 	}
-	// °ÑÁĞ±í l2 ÖĞµÄº¯Êı×¢²á½øÈ¥£¬²¢ÉèÖÃÒ»¸öÉÏÖµskynet_context
-	// ÉèÖÃÍêÉÏÖµ´ÓÕ»ÖĞµ¯³ö£¬Ö»¶Ôl2ÖĞµÄº¯ÊıÓĞĞ§
+	// æŠŠåˆ—è¡¨ l2 ä¸­çš„å‡½æ•°æ³¨å†Œè¿›å»ï¼Œå¹¶è®¾ç½®ä¸€ä¸ªä¸Šå€¼skynet_context
+	// è®¾ç½®å®Œä¸Šå€¼ä»æ ˆä¸­å¼¹å‡ºï¼Œåªå¯¹l2ä¸­çš„å‡½æ•°æœ‰æ•ˆ
 	luaL_setfuncs(L,l2,1);
 
 	return 1;

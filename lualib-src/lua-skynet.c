@@ -16,7 +16,7 @@ struct snlua {
 	const char * preload;
 };
 
-// ×Ô¶¨Òå´íÎó´¦Àíº¯Êı
+// è‡ªå®šä¹‰é”™è¯¯å¤„ç†å‡½æ•°
 static int
 traceback (lua_State *L) {
 	const char *msg = lua_tostring(L, 1);
@@ -28,7 +28,7 @@ traceback (lua_State *L) {
 	return 1;
 }
 
-// »Øµ÷º¯Êı
+// å›è°ƒå‡½æ•°
 // typedef int (*skynet_cb)(struct skynet_context * context, void *ud, int type, int session, uint32_t source , const void * msg, size_t sz);
 // 
 static int
@@ -38,27 +38,27 @@ _cb(struct skynet_context * context, void * ud, int type, int session, uint32_t 
 	int r;
 	int top = lua_gettop(L);
 	if (top == 0) {
-		// Èç¹ûluaÕ»Îª¿Õ£¬µÚÒ»´ÎÔËĞĞ
-		// ÏÈÑ¹Èëcº¯Êıtraceback
+		// å¦‚æœluaæ ˆä¸ºç©ºï¼Œç¬¬ä¸€æ¬¡è¿è¡Œ
+		// å…ˆå‹å…¥cå‡½æ•°traceback
 		lua_pushcfunction(L, traceback);
-		// ÔÙ°Ñ×¢²á±í±äÁ¿_cbÑ¹ÈëÕ»ÖĞ
+		// å†æŠŠæ³¨å†Œè¡¨å˜é‡_cbå‹å…¥æ ˆä¸­
 		lua_rawgetp(L, LUA_REGISTRYINDEX, _cb);
 	} else {
-		// Èç¹ûÕ»²»Îª¿Õ£¬Ôò±ØĞëÓĞ2¸öÔªËØ£¬µÚÒ»´ÎÔËĞĞÑ¹ÈëÕ»ÖĞµÄtracebackºÍ_cb
+		// å¦‚æœæ ˆä¸ä¸ºç©ºï¼Œåˆ™å¿…é¡»æœ‰2ä¸ªå…ƒç´ ï¼Œç¬¬ä¸€æ¬¡è¿è¡Œå‹å…¥æ ˆä¸­çš„tracebackå’Œ_cb
 		assert(top == 2);
 	}
-	// ¸´ÖÆ»Øµ÷º¯ÊıÔÙÑ¹ÈëÕ»ÖĞ
+	// å¤åˆ¶å›è°ƒå‡½æ•°å†å‹å…¥æ ˆä¸­
 	lua_pushvalue(L,2);
 
-	// ÒÀ´ÎÑ¹Èë²ÎÊıÖµ
+	// ä¾æ¬¡å‹å…¥å‚æ•°å€¼
 	lua_pushinteger(L, type);
 	lua_pushlightuserdata(L, (void *)msg);
 	lua_pushinteger(L,sz);
 	lua_pushinteger(L, session);
 	lua_pushinteger(L, source);
 
-	// Ö´ĞĞlua»Øµ÷·½·¨
-	// skynet.lua ÖĞµÄ raw_dispatch_message(prototype, msg, sz, session, source)
+	// æ‰§è¡Œluaå›è°ƒæ–¹æ³•
+	// skynet.lua ä¸­çš„ raw_dispatch_message(prototype, msg, sz, session, source)
 	r = lua_pcall(L, 5, 0 , trace);
 
 	if (r == LUA_OK) {
@@ -80,7 +80,7 @@ _cb(struct skynet_context * context, void * ud, int type, int session, uint32_t 
 		break;
 	};
 
-	// µ¯³ö»Øµ÷º¯Êı¸±±¾£¬±£ÁôtracebackºÍ_cb
+	// å¼¹å‡ºå›è°ƒå‡½æ•°å‰¯æœ¬ï¼Œä¿ç•™tracebackå’Œ_cb
 	lua_pop(L,1);
 
 	return 0;
@@ -96,23 +96,24 @@ forward_cb(struct skynet_context * context, void * ud, int type, int session, ui
 // c.callback(cb, forward)
 static int
 lcallback(lua_State *L) {
-	// »ñÈ¡µÚÒ»¸öÉÏÖµ£¬skynet_context
+	// è·å–ç¬¬ä¸€ä¸ªä¸Šå€¼ï¼Œskynet_context
 	struct skynet_context * context = lua_touserdata(L, lua_upvalueindex(1));
-	// »ñÈ¡µÚ¶ş¸ö²ÎÊıÖµ
-	int forward = lua_toboolean(L, 2);
-	// ¼ì²éµÚÒ»¸ö²ÎÊıÊÇ·ñÎªº¯ÊıÀàĞÍ
+	// è·å–ç¬¬äºŒä¸ªå‚æ•°å€¼
+	int forward = lua_toboolean(L, 2);
+
+	// æ£€æŸ¥ç¬¬ä¸€ä¸ªå‚æ•°æ˜¯å¦ä¸ºå‡½æ•°ç±»å‹
 	luaL_checktype(L,1,LUA_TFUNCTION);
-	// ÉèÖÃÕ»¶¥Îª1
+	// è®¾ç½®æ ˆé¡¶ä¸º1
 	lua_settop(L,1);
-	// °ÑÕ»¶¥º¯ÊıÔªËØÉèÖÃÎª×¢²á±í±äÁ¿_cb
+	// æŠŠæ ˆé¡¶å‡½æ•°å…ƒç´ è®¾ç½®ä¸ºæ³¨å†Œè¡¨å˜é‡_cb
 	lua_rawsetp(L, LUA_REGISTRYINDEX, _cb);
 
-	// °Ñ×¢²á±í±äÁ¿×´Ì¬»úµÄÖ÷Ïß³ÌÑ¹ÈëÕ»ÖĞ
+	// æŠŠæ³¨å†Œè¡¨å˜é‡çŠ¶æ€æœºçš„ä¸»çº¿ç¨‹å‹å…¥æ ˆä¸­
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_MAINTHREAD);
-	// ´ÓÕ»ÖĞ»ñÈ¡×´Ì¬»ú
+	// ä»æ ˆä¸­è·å–çŠ¶æ€æœº
 	lua_State *gL = lua_tothread(L,-1);
 
-	// ×¢²á»Øµ÷º¯Êı
+	// æ³¨å†Œå›è°ƒå‡½æ•°
 	if (forward) {
 		skynet_callback(context, gL, forward_cb);
 	} else {
@@ -123,26 +124,26 @@ lcallback(lua_State *L) {
 }
 
 // c.command(cmd, parm)
-// ±ÈÈç local addr = c.command("QUERY", name)
-// name Îª string£¬addr Îª string
+// æ¯”å¦‚ local addr = c.command("QUERY", name)
+// name ä¸º stringï¼Œaddr ä¸º string
 static int
 lcommand(lua_State *L) {
-	// »ñÈ¡µÚÒ»¸öÉÏÖµ£¬skynet_context
+	// è·å–ç¬¬ä¸€ä¸ªä¸Šå€¼ï¼Œskynet_context
 	struct skynet_context * context = lua_touserdata(L, lua_upvalueindex(1));
-	// »ñÈ¡µÚÒ»¸ö²ÎÊıÖµ
+	// è·å–ç¬¬ä¸€ä¸ªå‚æ•°å€¼
 	const char * cmd = luaL_checkstring(L,1);
 	const char * result;
 	const char * parm = NULL;
 	if (lua_gettop(L) == 2) {
-		// Èç¹ûÕ»¶¥Îª2£¬»ñÈ¡µÚ¶ş¸ö²ÎÊı
-		// ¼ì²âÕ»ÔªËØÀàĞÍÊÇ·ñÎªstring£¬²¢·µ»ØÕâ¸ö×Ö·û´®
+		// å¦‚æœæ ˆé¡¶ä¸º2ï¼Œè·å–ç¬¬äºŒä¸ªå‚æ•°
+		// æ£€æµ‹æ ˆå…ƒç´ ç±»å‹æ˜¯å¦ä¸ºstringï¼Œå¹¶è¿”å›è¿™ä¸ªå­—ç¬¦ä¸²
 		parm = luaL_checkstring(L,2);
 	}
 
-	// µ÷ÓÃÏàÓ¦µÄÖ¸Áî·½·¨
+	// è°ƒç”¨ç›¸åº”çš„æŒ‡ä»¤æ–¹æ³•
 	result = skynet_command(context, cmd, parm);
 	if (result) {
-		// Èç¹ûÓĞ·µ»ØÖµ£¬Ñ¹ÈëÖµ×÷Îªlua·µ»ØÖµ
+		// å¦‚æœæœ‰è¿”å›å€¼ï¼Œå‹å…¥å€¼ä½œä¸ºluaè¿”å›å€¼
 		lua_pushstring(L, result);
 		return 1;
 	}
@@ -150,19 +151,19 @@ lcommand(lua_State *L) {
 }
 
 // c.intcommand(cmd, parm)
-// ±ÈÈç local session = c.intcommand("TIMEOUT", ti)
-// parm Îª integer£¬session Ò²Îª integer
+// æ¯”å¦‚ local session = c.intcommand("TIMEOUT", ti)
+// parm ä¸º integerï¼Œsession ä¹Ÿä¸º integer
 static int
 lintcommand(lua_State *L) {
-	// »ñÈ¡µÚÒ»¸öÉÏÖµ£¬skynet_context
+	// è·å–ç¬¬ä¸€ä¸ªä¸Šå€¼ï¼Œskynet_context
 	struct skynet_context * context = lua_touserdata(L, lua_upvalueindex(1));
-	// »ñÈ¡µÚÒ»¸ö²ÎÊıÖµ
+	// è·å–ç¬¬ä¸€ä¸ªå‚æ•°å€¼
 	const char * cmd = luaL_checkstring(L,1);
 	const char * result;
 	const char * parm = NULL;
 	char tmp[64];	// for integer parm
 	if (lua_gettop(L) == 2) {
-		// Èç¹ûÕ»¶¥Îª2£¬»ñÈ¡µÚ¶ş¸ö²ÎÊı
+		// å¦‚æœæ ˆé¡¶ä¸º2ï¼Œè·å–ç¬¬äºŒä¸ªå‚æ•°
 		int32_t n = (int32_t)luaL_checkinteger(L,2);
 		sprintf(tmp, "%d", n);
 		parm = tmp;
@@ -170,7 +171,7 @@ lintcommand(lua_State *L) {
 
 	result = skynet_command(context, cmd, parm);
 	if (result) {
-		// Èç¹ûÓĞ·µ»ØÖµ£¬Ñ¹ÈëÕ»×÷Îªlua·µ»ØÖµ
+		// å¦‚æœæœ‰è¿”å›å€¼ï¼Œå‹å…¥æ ˆä½œä¸ºluaè¿”å›å€¼
 		lua_Integer r = strtoll(result, NULL, 0);
 		lua_pushinteger(L, r);
 		return 1;
@@ -181,15 +182,15 @@ lintcommand(lua_State *L) {
 // c.genid
 static int
 lgenid(lua_State *L) { 
-	// »ñÈ¡µÚÒ»¸öÉÏÖµ£¬skynet_context
+	// è·å–ç¬¬ä¸€ä¸ªä¸Šå€¼ï¼Œskynet_context
 	struct skynet_context * context = lua_touserdata(L, lua_upvalueindex(1));
-	// »ñÈ¡·ÖÅäµÄĞÂµÄsessionÖµ£¬²¢Ñ¹ÈëÕ»×÷Îªlua·µ»ØÖµ
+	// è·å–åˆ†é…çš„æ–°çš„sessionå€¼ï¼Œå¹¶å‹å…¥æ ˆä½œä¸ºluaè¿”å›å€¼
 	int session = skynet_send(context, 0, 0, PTYPE_TAG_ALLOCSESSION , 0 , NULL, 0);
 	lua_pushinteger(L, session);
 	return 1;
 }
 
-// »ñÈ¡µØÖ·Ãû×Ö·û´®
+// è·å–åœ°å€åå­—ç¬¦ä¸²
 static const char *
 get_dest_string(lua_State *L, int index) {
 	const char * dest_string = lua_tostring(L, index);
@@ -211,36 +212,36 @@ get_dest_string(lua_State *L, int index) {
 // local session = c.send(addr, p.id , nil , p.pack(...))
 static int
 lsend(lua_State *L) {
-	// »ñÈ¡µÚÒ»¸öÉÏÖµ£¬skynet_context
+	// è·å–ç¬¬ä¸€ä¸ªä¸Šå€¼ï¼Œskynet_context
 	struct skynet_context * context = lua_touserdata(L, lua_upvalueindex(1));
-	// »ñÈ¡µÚÒ»¸ö²ÎÊıÖµ£¬Ä¿µÄµØµØÖ·
-	// ÏÈ³¢ÊÔ»ñÈ¡ÕûÊıĞÍµØÖ·
+	// è·å–ç¬¬ä¸€ä¸ªå‚æ•°å€¼ï¼Œç›®çš„åœ°åœ°å€
+	// å…ˆå°è¯•è·å–æ•´æ•°å‹åœ°å€
 	uint32_t dest = (uint32_t)lua_tointeger(L, 1);
 	const char * dest_string = NULL;
 	if (dest == 0) {
-		// Èç¹û·ÇÕûÊıĞÍµØÖ·£¬»ñÈ¡µØÖ·Ãû×Ö·û´®
+		// å¦‚æœéæ•´æ•°å‹åœ°å€ï¼Œè·å–åœ°å€åå­—ç¬¦ä¸²
 		if (lua_type(L,1) == LUA_TNUMBER) {
 			return luaL_error(L, "Invalid service address 0");
 		}
 		dest_string = get_dest_string(L, 1);
 	}
 
-	// »ñÈ¡µÚ¶ş¸ö²ÎÊıÖµ£¬ÏûÏ¢ÀàĞÍ
+	// è·å–ç¬¬äºŒä¸ªå‚æ•°å€¼ï¼Œæ¶ˆæ¯ç±»å‹
 	int type = luaL_checkinteger(L, 2);
 	int session = 0;
 	if (lua_isnil(L,3)) {
-		// Èç¹ûµÚÈı¸ö²ÎÊıÎªnil£¬Ôò×Ô¶¯·ÖÅäĞÂµÄsession
+		// å¦‚æœç¬¬ä¸‰ä¸ªå‚æ•°ä¸ºnilï¼Œåˆ™è‡ªåŠ¨åˆ†é…æ–°çš„session
 		type |= PTYPE_TAG_ALLOCSESSION;
 	} else {
-		// ·ñÔò»ñÈ¡sessionÖµ
+		// å¦åˆ™è·å–sessionå€¼
 		session = luaL_checkinteger(L,3);
 	}
 
-	// »ñÈ¡µÚËÄ¸ö²ÎÊıÖµ
+	// è·å–ç¬¬å››ä¸ªå‚æ•°å€¼
 	int mtype = lua_type(L,4);
 	switch (mtype) {
 	case LUA_TSTRING: {
-		// Èç¹ûÊÇ×Ö·û´®
+		// å¦‚æœæ˜¯å­—ç¬¦ä¸²
 		size_t len = 0;
 		void * msg = (void *)lua_tolstring(L,4,&len);
 		if (len == 0) {
@@ -254,7 +255,7 @@ lsend(lua_State *L) {
 		break;
 	}
 	case LUA_TLIGHTUSERDATA: {
-		// Èç¹ûÊÇÇáÁ¿¼¶ÓÃ»§Êı¾İ msg, sz
+		// å¦‚æœæ˜¯è½»é‡çº§ç”¨æˆ·æ•°æ® msg, sz
 		void * msg = lua_touserdata(L,4);
 		int size = luaL_checkinteger(L,5);
 		if (dest_string) {
@@ -272,7 +273,7 @@ lsend(lua_State *L) {
 		// todo: maybe throw an error would be better
 		return 0;
 	}
-	// sessionÖµÑ¹Õ»×÷Îªlua·µ»ØÖµ
+	// sessionå€¼å‹æ ˆä½œä¸ºluaè¿”å›å€¼
 	lua_pushinteger(L,session);
 	return 1;
 }
@@ -280,24 +281,24 @@ lsend(lua_State *L) {
 // c.redirect(address, 0, skynet.PTYPE_ERROR, session, "")
 static int
 lredirect(lua_State *L) {
-	// »ñÈ¡µÚÒ»¸öÉÏÖµ£¬skynet_context
+	// è·å–ç¬¬ä¸€ä¸ªä¸Šå€¼ï¼Œskynet_context
 	struct skynet_context * context = lua_touserdata(L, lua_upvalueindex(1));
-	// »ñÈ¡µÚÒ»¸ö²ÎÊıÖµ£¬Ä¿µÄµØµØÖ·
-	// ÏÈ³¢ÊÔ»ñÈ¡ÕûÊıĞÍµØÖ·
+	// è·å–ç¬¬ä¸€ä¸ªå‚æ•°å€¼ï¼Œç›®çš„åœ°åœ°å€
+	// å…ˆå°è¯•è·å–æ•´æ•°å‹åœ°å€
 	uint32_t dest = (uint32_t)lua_tointeger(L,1);
 	const char * dest_string = NULL;
 	if (dest == 0) {
-		// Èç¹û·ÇÕûÊıĞÍµØÖ·£¬»ñÈ¡µØÖ·Ãû×Ö·û´®
+		// å¦‚æœéæ•´æ•°å‹åœ°å€ï¼Œè·å–åœ°å€åå­—ç¬¦ä¸²
 		dest_string = get_dest_string(L, 1);
 	}
-	// »ñÈ¡µÚ¶ş¸ö²ÎÊıÖµ£¬Ô´µØÖ·
+	// è·å–ç¬¬äºŒä¸ªå‚æ•°å€¼ï¼Œæºåœ°å€
 	uint32_t source = (uint32_t)luaL_checkinteger(L,2);
-	// »ñÈ¡µÚ¶ş¸ö²ÎÊıÖµ£¬ÀàĞÍ
+	// è·å–ç¬¬äºŒä¸ªå‚æ•°å€¼ï¼Œç±»å‹
 	int type = luaL_checkinteger(L,3);
-	// »ñÈ¡µÚ¶ş¸ö²ÎÊıÖµ£¬session
+	// è·å–ç¬¬äºŒä¸ªå‚æ•°å€¼ï¼Œsession
 	int session = luaL_checkinteger(L,4);
 
-	// Í¬lsend·½·¨
+	// åŒlsendæ–¹æ³•
 	int mtype = lua_type(L,5);
 	switch (mtype) {
 	case LUA_TSTRING: {
@@ -326,7 +327,7 @@ lredirect(lua_State *L) {
 	default:
 		luaL_error(L, "skynet.redirect invalid param %s", lua_typename(L,mtype));
 	}
-	// Ã»ÓĞlua·µ»ØÖµ
+	// æ²¡æœ‰luaè¿”å›å€¼
 	return 0;
 }
 
@@ -428,7 +429,7 @@ lnow(lua_State *L) {
 // require "skynet.core"
 int
 luaopen_skynet_core(lua_State *L) {
-	// ¼ì²éµ÷ÓÃËüµÄÄÚºËÊÇ·ñÊÇ´´½¨Õâ¸ö Lua ×´Ì¬»úµÄÄÚºË£¬ÒÔ¼°µ÷ÓÃËüµÄ´úÂëÊÇ·ñÊ¹ÓÃÁËÏàÍ¬µÄ Lua °æ±¾£¬Í¬Ê±Ò²¼ì²éµ÷ÓÃËüµÄÄÚºËÓë´´½¨¸Ã Lua ×´Ì¬»úµÄÄÚºË ÊÇ·ñÊ¹ÓÃÁËÍ¬Ò»Æ¬µØÖ·¿Õ¼ä¡£
+	// æ£€æŸ¥è°ƒç”¨å®ƒçš„å†…æ ¸æ˜¯å¦æ˜¯åˆ›å»ºè¿™ä¸ª Lua çŠ¶æ€æœºçš„å†…æ ¸ï¼Œä»¥åŠè°ƒç”¨å®ƒçš„ä»£ç æ˜¯å¦ä½¿ç”¨äº†ç›¸åŒçš„ Lua ç‰ˆæœ¬ï¼ŒåŒæ—¶ä¹Ÿæ£€æŸ¥è°ƒç”¨å®ƒçš„å†…æ ¸ä¸åˆ›å»ºè¯¥ Lua çŠ¶æ€æœºçš„å†…æ ¸ æ˜¯å¦ä½¿ç”¨äº†åŒä¸€ç‰‡åœ°å€ç©ºé—´ã€‚
 	luaL_checkversion(L);
 
 	luaL_Reg l[] = {
@@ -449,20 +450,20 @@ luaopen_skynet_core(lua_State *L) {
 		{ NULL, NULL },
 	};
 
-	// ´´½¨Ò»ÕÅĞÂµÄ±í£¬²¢Ô¤·ÖÅä×ã¹»±£´æÏÂÊı×é l ÄÚÈİµÄ¿Õ¼ä£¨µ«²»Ìî³ä£©
+	// åˆ›å»ºä¸€å¼ æ–°çš„è¡¨ï¼Œå¹¶é¢„åˆ†é…è¶³å¤Ÿä¿å­˜ä¸‹æ•°ç»„ l å†…å®¹çš„ç©ºé—´ï¼ˆä½†ä¸å¡«å……ï¼‰
 	luaL_newlibtable(L, l);
 
-	// °Ñ×¢²á±í±äÁ¿skynet_contextÑ¹ÈëÕ»ÖĞ£¬×÷ÎªËùÓĞ×¢²áº¯ÊıµÄÉÏÖµ
+	// æŠŠæ³¨å†Œè¡¨å˜é‡skynet_contextå‹å…¥æ ˆä¸­ï¼Œä½œä¸ºæ‰€æœ‰æ³¨å†Œå‡½æ•°çš„ä¸Šå€¼
 	lua_getfield(L, LUA_REGISTRYINDEX, "skynet_context");
-	// Èç¹ûsnlua·şÎñµÄinit_cb·½·¨ÖĞÕı³£Ö´ĞĞ£¬»ñÈ¡µ½µÄctxÓ¦¸Ã²»Îª¿Õ
+	// å¦‚æœsnluaæœåŠ¡çš„init_cbæ–¹æ³•ä¸­æ­£å¸¸æ‰§è¡Œï¼Œè·å–åˆ°çš„ctxåº”è¯¥ä¸ä¸ºç©º
 	struct skynet_context *ctx = lua_touserdata(L,-1);
 	if (ctx == NULL) {
 		return luaL_error(L, "Init skynet context first");
 	}
 
-	// °ÑÊı×é l ÖĞµÄËùÓĞº¯Êı×¢²áµ½Õ»¶¥µÄ±íÖĞ
-	// nup = 1 Ò»¸öÉÏÖµ£¬skynet_context
-	// ÏÈÑ¹±í£¬ºóÑ¹ÉÏÖµ£¬×¢²áÍê±Ï£¬ÉÏÖµ´ÓÕ»ÖĞµ¯³ö
+	// æŠŠæ•°ç»„ l ä¸­çš„æ‰€æœ‰å‡½æ•°æ³¨å†Œåˆ°æ ˆé¡¶çš„è¡¨ä¸­
+	// nup = 1 ä¸€ä¸ªä¸Šå€¼ï¼Œskynet_context
+	// å…ˆå‹è¡¨ï¼Œåå‹ä¸Šå€¼ï¼Œæ³¨å†Œå®Œæ¯•ï¼Œä¸Šå€¼ä»æ ˆä¸­å¼¹å‡º
 	luaL_setfuncs(L,l,1);
 
 	return 1;

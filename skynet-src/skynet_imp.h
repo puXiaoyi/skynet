@@ -2,20 +2,20 @@
 #define SKYNET_IMP_H
 
 struct skynet_config {
-	int thread;					// ¹¤×÷Ïß³ÌÊı
-	int harbor;					// harbor¿ªÆô±êÊ¶
-	const char * daemon;		// ºóÌ¨ÔËĞĞ±êÊ¶
-	const char * module_path; 	// c moduleµØÖ·
-	const char * bootstrap;		// Æô¶¯·şÎñÅäÖÃ£¬Èç snlua bootstrap
-	const char * logger;		// ÈÕÖ¾·şÎñÅäÖÃ
-	const char * logservice;	// ÈÕÖ¾·şÎñµØÖ·
+	int thread;					// å·¥ä½œçº¿ç¨‹æ•°
+	int harbor;					// harborå¼€å¯æ ‡è¯†
+	const char * daemon;		// åå°è¿è¡Œæ ‡è¯†
+	const char * module_path; 	// c moduleåœ°å€
+	const char * bootstrap;		// å¯åŠ¨æœåŠ¡é…ç½®ï¼Œå¦‚ snlua bootstrap
+	const char * logger;		// æ—¥å¿—æœåŠ¡é…ç½®
+	const char * logservice;	// æ—¥å¿—æœåŠ¡åœ°å€
 };
 
-#define THREAD_WORKER 0			// ¹¤×÷Ïß³Ì
-#define THREAD_MAIN 1			// Ö÷Ïß³Ì
-#define THREAD_SOCKET 2			// ÍøÂçÏß³Ì
-#define THREAD_TIMER 3			// ¶¨Ê±Æ÷Ïß³Ì
-#define THREAD_MONITOR 4		// ¼àÊÓÆ÷Ïß³Ì
+#define THREAD_WORKER 0			// å·¥ä½œçº¿ç¨‹
+#define THREAD_MAIN 1			// ä¸»çº¿ç¨‹
+#define THREAD_SOCKET 2			// ç½‘ç»œçº¿ç¨‹
+#define THREAD_TIMER 3			// å®šæ—¶å™¨çº¿ç¨‹
+#define THREAD_MONITOR 4		// ç›‘è§†å™¨çº¿ç¨‹
 
 void skynet_start(struct skynet_config * config);
 

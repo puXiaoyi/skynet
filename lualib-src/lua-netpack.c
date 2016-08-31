@@ -10,47 +10,47 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define QUEUESIZE 1024	// ³õÊ¼ÏûÏ¢°ü¶ÓÁĞÈİÁ¿
-#define HASHSIZE 4096	// ³õÊ¼Î´Íê³ÉÊı×é³¤¶È
+#define QUEUESIZE 1024	// åˆå§‹æ¶ˆæ¯åŒ…é˜Ÿåˆ—å®¹é‡
+#define HASHSIZE 4096	// åˆå§‹æœªå®Œæˆæ•°ç»„é•¿åº¦
 #define SMALLSTRING 2048
 
-// ¶¨ÒåÀàĞÍºê
-#define TYPE_DATA 1		// ÓĞÊı¾İĞ´Èë
-#define TYPE_MORE 2		// ÓĞ¸ü¶àÊı¾İ
-#define TYPE_ERROR 3	// ³ö´í
-#define TYPE_OPEN 4		// ´ò¿ª
-#define TYPE_CLOSE 5	// ¹Ø±Õ
-#define TYPE_WARNING 6	// ¾¯¸æ
+// å®šä¹‰ç±»å‹å®
+#define TYPE_DATA 1		// æœ‰æ•°æ®å†™å…¥
+#define TYPE_MORE 2		// æœ‰æ›´å¤šæ•°æ®
+#define TYPE_ERROR 3	// å‡ºé”™
+#define TYPE_OPEN 4		// æ‰“å¼€
+#define TYPE_CLOSE 5	// å…³é—­
+#define TYPE_WARNING 6	// è­¦å‘Š
 
 /*
 	Each package is uint16 + data , uint16 (serialized in big-endian) is the number of bytes comprising the data .
  */
 // header(2 bytes) + data
-// ÏûÏ¢°ü½á¹¹
+// æ¶ˆæ¯åŒ…ç»“æ„
 struct netpack {
-	int id;				// socketÏûÏ¢µÄfd
-	int size;			// socketÏûÏ¢µÄ³¤¶È
-	void * buffer;		// socketÏûÏ¢µÄ»º³åÇøÄÚÈİ
+	int id;				// socketæ¶ˆæ¯çš„fd
+	int size;			// socketæ¶ˆæ¯çš„é•¿åº¦
+	void * buffer;		// socketæ¶ˆæ¯çš„ç¼“å†²åŒºå†…å®¹
 };
 
-// Î´Íê³ÉµÄÏûÏ¢°ü½á¹¹
+// æœªå®Œæˆçš„æ¶ˆæ¯åŒ…ç»“æ„
 struct uncomplete {
-	struct netpack pack;		// ÏûÏ¢°ü
-	struct uncomplete * next;	// ÏÂÒ»¸öÖ¸Õë
-	int read;					// Êı¾İ°üÒÑ¶Á³¤¶È
-	int header;					// µ¥×Ö½Ú³¤Êı¾İ°üµÄ×Ö½Ú´ú±íµÄ¸ß8Î»ÕûÊıÖµ
+	struct netpack pack;		// æ¶ˆæ¯åŒ…
+	struct uncomplete * next;	// ä¸‹ä¸€ä¸ªæŒ‡é’ˆ
+	int read;					// æ•°æ®åŒ…å·²è¯»é•¿åº¦
+	int header;					// å•å­—èŠ‚é•¿æ•°æ®åŒ…çš„å­—èŠ‚ä»£è¡¨çš„é«˜8ä½æ•´æ•°å€¼
 };
 
-// ÏûÏ¢°ü¶ÓÁĞ½á¹¹
+// æ¶ˆæ¯åŒ…é˜Ÿåˆ—ç»“æ„
 struct queue {
-	int cap;							// ÈİÁ¿					
-	int head;							// Í·Ë÷Òı
-	int tail;							// Î²Ë÷Òı
-	struct uncomplete * hash[HASHSIZE]; // Î´Íê³ÉÊı×é
-	struct netpack queue[QUEUESIZE];	// »º³åÇø¶ÓÁĞ
+	int cap;							// å®¹é‡					
+	int head;							// å¤´ç´¢å¼•
+	int tail;							// å°¾ç´¢å¼•
+	struct uncomplete * hash[HASHSIZE]; // æœªå®Œæˆæ•°ç»„
+	struct netpack queue[QUEUESIZE];	// ç¼“å†²åŒºé˜Ÿåˆ—
 };
 
-// Çå¿ÕÎ´Íê³ÉÁ´±í
+// æ¸…ç©ºæœªå®Œæˆé“¾è¡¨
 static void
 clear_list(struct uncomplete * uc) {
 	while (uc) {
@@ -61,7 +61,7 @@ clear_list(struct uncomplete * uc) {
 	}
 }
 
-// Çå¿ÕÏûÏ¢°ü¶ÓÁĞ
+// æ¸…ç©ºæ¶ˆæ¯åŒ…é˜Ÿåˆ—
 static int
 lclear(lua_State *L) {
 	struct queue * q = lua_touserdata(L, 1);
@@ -74,7 +74,7 @@ lclear(lua_State *L) {
 		q->hash[i] = NULL;
 	}
 	if (q->head > q->tail) {
-		// ²»»ØÈÆ²»Ó°ÏìÈ¡ÓàÖµ£¬ÎªÁË·½±ãÏÂÃæ±éÀú»º³åÇø
+		// ä¸å›ç»•ä¸å½±å“å–ä½™å€¼ï¼Œä¸ºäº†æ–¹ä¾¿ä¸‹é¢éå†ç¼“å†²åŒº
 		q->tail += q->cap;
 	}
 	for (i=q->head;i<q->tail;i++) {
@@ -86,7 +86,7 @@ lclear(lua_State *L) {
 	return 0;
 }
 
-// ¼ÆËãfdµÄhashÖµ
+// è®¡ç®—fdçš„hashå€¼
 static inline int
 hash_fd(int fd) {
 	int a = fd >> 24;
@@ -95,12 +95,12 @@ hash_fd(int fd) {
 	return (int)(((uint32_t)(a + b + c)) % HASHSIZE);
 }
 
-// ²éÕÒÎ´Íê³ÉÏûÏ¢°ü
+// æŸ¥æ‰¾æœªå®Œæˆæ¶ˆæ¯åŒ…
 static struct uncomplete *
 find_uncomplete(struct queue *q, int fd) {
 	if (q == NULL)
 		return NULL;
-	// ÏÈÔÚq->hashÖĞ¹şÏ£²éÕÒ
+	// å…ˆåœ¨q->hashä¸­å“ˆå¸ŒæŸ¥æ‰¾
 	int h = hash_fd(fd);
 	struct uncomplete * uc = q->hash[h];
 	if (uc == NULL)
@@ -109,7 +109,7 @@ find_uncomplete(struct queue *q, int fd) {
 		q->hash[h] = uc->next;
 		return uc;
 	}
-	// ÔÙÔÚÁ´±íÖĞÑ­»·²éÕÒ
+	// å†åœ¨é“¾è¡¨ä¸­å¾ªç¯æŸ¥æ‰¾
 	struct uncomplete * last = uc;
 	while (last->next) {
 		uc = last->next;
@@ -122,13 +122,13 @@ find_uncomplete(struct queue *q, int fd) {
 	return NULL;
 }
 
-// ·µ»ØÏûÏ¢°ü¶ÓÁĞ£¬Èç¹ûÎª¿ÕÔò´´½¨²¢³õÊ¼»¯
+// è¿”å›æ¶ˆæ¯åŒ…é˜Ÿåˆ—ï¼Œå¦‚æœä¸ºç©ºåˆ™åˆ›å»ºå¹¶åˆå§‹åŒ–
 static struct queue *
 get_queue(lua_State *L) {
 	struct queue *q = lua_touserdata(L,1);
 	if (q == NULL) {
-		// ÍêÈ«ÓÃ»§Êı¾İ£¬Ö¸µÄÊÇ·ÖÅäÒ»¿éÖ¸¶¨´óĞ¡µÄÄÚ´æ¿é£¬°ÑÄÚ´æ¿éµØÖ·Ñ¹Õ»²¢·µ»ØÕâ¸öµØÖ·£¬ËŞÖ÷³ÌĞò¿ÉÒÔÈÎÒâÊ¹ÓÃÕâ¿éÄÚ´æ¡£
-		// ÇáÁ¿ÓÃ»§Êı¾İ£¬±£´æµÄÖ»ÊÇvoid*Ö¸Õë£¬ÊÇÒ»¸öÊı×Ö¿ÉÒÔÏà»¥±È½Ï£¬²»ÓÃ¿ÌÒâ´´½¨ÄÚ´æ¿Õ¼ä
+		// å®Œå…¨ç”¨æˆ·æ•°æ®ï¼ŒæŒ‡çš„æ˜¯åˆ†é…ä¸€å—æŒ‡å®šå¤§å°çš„å†…å­˜å—ï¼ŒæŠŠå†…å­˜å—åœ°å€å‹æ ˆå¹¶è¿”å›è¿™ä¸ªåœ°å€ï¼Œå®¿ä¸»ç¨‹åºå¯ä»¥ä»»æ„ä½¿ç”¨è¿™å—å†…å­˜ã€‚
+		// è½»é‡ç”¨æˆ·æ•°æ®ï¼Œä¿å­˜çš„åªæ˜¯void*æŒ‡é’ˆï¼Œæ˜¯ä¸€ä¸ªæ•°å­—å¯ä»¥ç›¸äº’æ¯”è¾ƒï¼Œä¸ç”¨åˆ»æ„åˆ›å»ºå†…å­˜ç©ºé—´
 		q = lua_newuserdata(L, sizeof(struct queue));
 		q->cap = QUEUESIZE;
 		q->head = 0;
@@ -142,16 +142,16 @@ get_queue(lua_State *L) {
 	return q;
 }
 
-// À©ÈİÏûÏ¢°ü¶ÓÁĞ
+// æ‰©å®¹æ¶ˆæ¯åŒ…é˜Ÿåˆ—
 static void
 expand_queue(lua_State *L, struct queue *q) {
-	// ´´½¨ĞÂµÄÍêÈ«ÓÃ»§Êı¾İ	
+	// åˆ›å»ºæ–°çš„å®Œå…¨ç”¨æˆ·æ•°æ®	
 	struct queue *nq = lua_newuserdata(L, sizeof(struct queue) + q->cap * sizeof(struct netpack));
 	nq->cap = q->cap + QUEUESIZE;
-	// ÖØÖÃÁËheadºÍtailË÷Òı
+	// é‡ç½®äº†headå’Œtailç´¢å¼•
 	nq->head = 0;
 	nq->tail = q->cap;
-	// Ç¨ÒÆÊı¾İµ½ĞÂµÄ¶ÓÁĞ
+	// è¿ç§»æ•°æ®åˆ°æ–°çš„é˜Ÿåˆ—
 	memcpy(nq->hash, q->hash, sizeof(nq->hash));
 	memset(q->hash, 0, sizeof(q->hash));
 	int i;
@@ -160,42 +160,42 @@ expand_queue(lua_State *L, struct queue *q) {
 		nq->queue[i] = q->queue[idx];
 	}
 	q->head = q->tail = 0;
-	// °ÑÕ»¶¥ÔªËØ·ÅÖÃµ½¸ø¶¨Î»ÖÃ¶ø²»ÒÆ¶¯ÆäËüÔªËØ £¨Òò´Ë¸²¸ÇÁËÄÇ¸öÎ»ÖÃ´¦µÄÖµ£©£¬È»ºó½«Õ»¶¥ÔªËØµ¯³ö
-	// ¸ü»»Õ»ÉÏÊı¾İÎªnq
+	// æŠŠæ ˆé¡¶å…ƒç´ æ”¾ç½®åˆ°ç»™å®šä½ç½®è€Œä¸ç§»åŠ¨å…¶å®ƒå…ƒç´  ï¼ˆå› æ­¤è¦†ç›–äº†é‚£ä¸ªä½ç½®å¤„çš„å€¼ï¼‰ï¼Œç„¶åå°†æ ˆé¡¶å…ƒç´ å¼¹å‡º
+	// æ›´æ¢æ ˆä¸Šæ•°æ®ä¸ºnq
 	lua_replace(L,1);
 }
 
-// Ñ¹ÈëÏûÏ¢°ü¶ÓÁĞ
+// å‹å…¥æ¶ˆæ¯åŒ…é˜Ÿåˆ—
 static void
 push_data(lua_State *L, int fd, void *buffer, int size, int clone) {
 	if (clone) {
-		// Èç¹ûĞèÒª¿½±´£¬ÔòÖØĞÂ·ÖÅäÄÚ´æ¿Õ¼ä
+		// å¦‚æœéœ€è¦æ‹·è´ï¼Œåˆ™é‡æ–°åˆ†é…å†…å­˜ç©ºé—´
 		void * tmp = skynet_malloc(size);
 		memcpy(tmp, buffer, size);
 		buffer = tmp;
 	}
-	// »ñÈ¡ÏûÏ¢°ü¶ÓÁĞ
+	// è·å–æ¶ˆæ¯åŒ…é˜Ÿåˆ—
 	struct queue *q = get_queue(L);
-	// Êı¾İ·ÅÈë¶ÓÁĞÎ²²¿
+	// æ•°æ®æ”¾å…¥é˜Ÿåˆ—å°¾éƒ¨
 	struct netpack *np = &q->queue[q->tail];
 	if (++q->tail >= q->cap)
-		// »ØÈÆ
+		// å›ç»•
 		q->tail -= q->cap;
 	np->id = fd;
 	np->buffer = buffer;
 	np->size = size;
 	if (q->head == q->tail) {
-		// ¶ÓÁĞÂú£¬½øĞĞÀ©Èİ
+		// é˜Ÿåˆ—æ»¡ï¼Œè¿›è¡Œæ‰©å®¹
 		expand_queue(L, q);
 	}
 }
 
-// ±£´æÎ´Íê³É
+// ä¿å­˜æœªå®Œæˆ
 static struct uncomplete *
 save_uncomplete(lua_State *L, int fd) {
 	struct queue *q = get_queue(L);
 	int h = hash_fd(fd);
-	// ´´½¨Ò»¸öÎ´Íê³ÉÊµÀı£¬·ÅÈëÁ´±íºÍ¹şÏ£Êı×éÖĞ
+	// åˆ›å»ºä¸€ä¸ªæœªå®Œæˆå®ä¾‹ï¼Œæ”¾å…¥é“¾è¡¨å’Œå“ˆå¸Œæ•°ç»„ä¸­
 	struct uncomplete * uc = skynet_malloc(sizeof(struct uncomplete));
 	memset(uc, 0, sizeof(*uc));
 	uc->next = q->hash[h];
@@ -205,55 +205,55 @@ save_uncomplete(lua_State *L, int fd) {
 	return uc;
 }
 
-// ¶ÁÈë2×Ö½ÚÍ·¼ÆËã³¤¶È
+// è¯»å…¥2å­—èŠ‚å¤´è®¡ç®—é•¿åº¦
 static inline int
 read_size(uint8_t * buffer) {
 	int r = (int)buffer[0] << 8 | (int)buffer[1];
 	return r;
 }
 
-// ¶ÁÈë¸ü¶àÊı¾İ
+// è¯»å…¥æ›´å¤šæ•°æ®
 static void
 push_more(lua_State *L, int fd, uint8_t *buffer, int size) {
 	if (size == 1) {
-		// Èç¹û³¤¶ÈÖ»ÓĞ1£¬ÒòÎª¹æ¶¨Í·²¿2×Ö½Ú£¬°üÍ·²»ÍêÕû
-		// ±£´æÎ´Íê³É
+		// å¦‚æœé•¿åº¦åªæœ‰1ï¼Œå› ä¸ºè§„å®šå¤´éƒ¨2å­—èŠ‚ï¼ŒåŒ…å¤´ä¸å®Œæ•´
+		// ä¿å­˜æœªå®Œæˆ
 		struct uncomplete * uc = save_uncomplete(L, fd);
-		// ÒòÎªÖ»ÓĞÒ»¸ö×Ö½Ú£¬È«²¿¶¼ÊÇ°üÍ·
-		// read¸³ÖµÎª-1£¬×÷ÎªÌØÊâ±êÊ¶
+		// å› ä¸ºåªæœ‰ä¸€ä¸ªå­—èŠ‚ï¼Œå…¨éƒ¨éƒ½æ˜¯åŒ…å¤´
+		// readèµ‹å€¼ä¸º-1ï¼Œä½œä¸ºç‰¹æ®Šæ ‡è¯†
 		uc->read = -1;
 		uc->header = *buffer;
 		return;
 	}
-	// ¼ÆËãÊı¾İ°üµÄ³¤¶È£¬²»°üº¬2×Ö½Ú°üÍ·
+	// è®¡ç®—æ•°æ®åŒ…çš„é•¿åº¦ï¼Œä¸åŒ…å«2å­—èŠ‚åŒ…å¤´
 	int pack_size = read_size(buffer);
 	buffer += 2;
 	size -= 2;
 
 	if (size < pack_size) {
-		// °ü²»ÍêÕû
-		// ±£´æÎ´Íê³É
+		// åŒ…ä¸å®Œæ•´
+		// ä¿å­˜æœªå®Œæˆ
 		struct uncomplete * uc = save_uncomplete(L, fd);
-		// ¼ÇÂ¼ÒÑ¶ÁĞÅÏ¢µ½Î´Íê³É½á¹¹
-		uc->read = size;							// ÒÑ¶Á³¤¶È
+		// è®°å½•å·²è¯»ä¿¡æ¯åˆ°æœªå®Œæˆç»“æ„
+		uc->read = size;							// å·²è¯»é•¿åº¦
 		uc->pack.size = pack_size;
-		uc->pack.buffer = skynet_malloc(pack_size);	// Êµ¼Ê³¤¶È
-		memcpy(uc->pack.buffer, buffer, size);		// ¸´ÖÆÊı¾İ
+		uc->pack.buffer = skynet_malloc(pack_size);	// å®é™…é•¿åº¦
+		memcpy(uc->pack.buffer, buffer, size);		// å¤åˆ¶æ•°æ®
 		return;
 	}
-	// °üÍêÕû
-	// Ñ¹ÈëÊı¾İ°ü¶ÓÁĞ
+	// åŒ…å®Œæ•´
+	// å‹å…¥æ•°æ®åŒ…é˜Ÿåˆ—
 	push_data(L, fd, buffer, pack_size, 1);
 
 	buffer += pack_size;
 	size -= pack_size;
 	if (size > 0) {
-		// Èç¹û»º³åÇø³¤¶È´óÓÚ°üÍ·³¤¶È£¬ËµÃ÷Ò»¸ö»º³åÇø¶à¸öÊı¾İ°ü£¬µİ¹éµ÷ÓÃ¶ÁÈ¡¸ü¶àÊı¾İ
+		// å¦‚æœç¼“å†²åŒºé•¿åº¦å¤§äºåŒ…å¤´é•¿åº¦ï¼Œè¯´æ˜ä¸€ä¸ªç¼“å†²åŒºå¤šä¸ªæ•°æ®åŒ…ï¼Œé€’å½’è°ƒç”¨è¯»å–æ›´å¤šæ•°æ®
 		push_more(L, fd, buffer, size);
 	}
 }
 
-// ¹Ø±ÕÎ´Íê³ÉµÄ
+// å…³é—­æœªå®Œæˆçš„
 static void
 close_uncomplete(lua_State *L, int fd) {
 	struct queue *q = lua_touserdata(L,1);
@@ -269,28 +269,28 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 	struct queue *q = lua_touserdata(L,1);
 	struct uncomplete * uc = find_uncomplete(q, fd);
 	if (uc) {
-		// Èç¹ûÓĞÎ´Íê³É
+		// å¦‚æœæœ‰æœªå®Œæˆ
 		// fill uncomplete
 		if (uc->read < 0) {
 			// read size
-			// Èç¹ûreadÎª-1£¬bufferÖ»±£´æÁË1×Ö½ÚµÄÍ·£¬¼´buffer[0]
+			// å¦‚æœreadä¸º-1ï¼Œbufferåªä¿å­˜äº†1å­—èŠ‚çš„å¤´ï¼Œå³buffer[0]
 			assert(uc->read == -1);
-			// ÔÙ¶ÁÒ»¸ö×Ö½Úbuffer[1]
+			// å†è¯»ä¸€ä¸ªå­—èŠ‚buffer[1]
 			int pack_size = *buffer;
-			// buffer[0] << 8 | buffer[1] ¼ÆËã³öÕæÊµµÄÊı¾İ°ü³¤¶È
+			// buffer[0] << 8 | buffer[1] è®¡ç®—å‡ºçœŸå®çš„æ•°æ®åŒ…é•¿åº¦
 			pack_size |= uc->header << 8 ;
-			// Æ«ÒÆ×¼±¸¶ÁÈ¡Í·ºóÃæµÄ°üÊı¾İ
+			// åç§»å‡†å¤‡è¯»å–å¤´åé¢çš„åŒ…æ•°æ®
 			++buffer;
 			--size;
-			// ¸üĞÂÎ´Íê³É½á¹¹±äÁ¿£¬°üÀ¨ÕæÊµµÄÊı¾İ°ü³¤¶ÈÒÔ¼°·ÖÅä»º³åÇø¿Õ¼ä
+			// æ›´æ–°æœªå®Œæˆç»“æ„å˜é‡ï¼ŒåŒ…æ‹¬çœŸå®çš„æ•°æ®åŒ…é•¿åº¦ä»¥åŠåˆ†é…ç¼“å†²åŒºç©ºé—´
 			uc->pack.size = pack_size;
 			uc->pack.buffer = skynet_malloc(pack_size);
 			uc->read = 0;
 		}
-		// ĞèÒª¼ÌĞø¶ÁÈ¡µÄÊı¾İ³¤¶È
+		// éœ€è¦ç»§ç»­è¯»å–çš„æ•°æ®é•¿åº¦
 		int need = uc->pack.size - uc->read;
 		if (size < need) {
-			// Èç¹û°ü³¤¶È»¹ÊÇ²»¹»£¬¸üĞÂÎ´Íê³É½á¹¹±äÁ¿
+			// å¦‚æœåŒ…é•¿åº¦è¿˜æ˜¯ä¸å¤Ÿï¼Œæ›´æ–°æœªå®Œæˆç»“æ„å˜é‡
 			memcpy(uc->pack.buffer + uc->read, buffer, size);
 			uc->read += size;
 			int h = hash_fd(fd);
@@ -298,18 +298,18 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 			q->hash[h] = uc;
 			return 1;
 		}
-		// Èç¹û¿ÉÒÔÒ»´ÎĞÔ¶ÁÍê
+		// å¦‚æœå¯ä»¥ä¸€æ¬¡æ€§è¯»å®Œ
 		memcpy(uc->pack.buffer + uc->read, buffer, need);
 		buffer += need;
 		size -= need;
 		if (size == 0) {
-			// Èç¹û¸ÕºÃ¶ÁÍê£¬Ã»ÓĞÊ£ÓàÊı¾İ
-			// Ñ¹ÈëÉÏÖµ "data"
-			// Ñ¹ÈëÏûÏ¢ fd
-			// Ñ¹Èë»º³åÇøÊı¾İ msg
-			// Ñ¹Èë»º³åÇø´óĞ¡ sz
-			// ·µ»Ø queue, data, fd, msg, sz Õâ5¸ö²ÎÊı
-			// dispatch_msg(fd, msg, sz) ¼û lualib/snax/gateserver.lua
+			// å¦‚æœåˆšå¥½è¯»å®Œï¼Œæ²¡æœ‰å‰©ä½™æ•°æ®
+			// å‹å…¥ä¸Šå€¼ "data"
+			// å‹å…¥æ¶ˆæ¯ fd
+			// å‹å…¥ç¼“å†²åŒºæ•°æ® msg
+			// å‹å…¥ç¼“å†²åŒºå¤§å° sz
+			// è¿”å› queue, data, fd, msg, sz è¿™5ä¸ªå‚æ•°
+			// dispatch_msg(fd, msg, sz) è§ lualib/snax/gateserver.lua
 			lua_pushvalue(L, lua_upvalueindex(TYPE_DATA));
 			lua_pushinteger(L, fd);
 			lua_pushlightuserdata(L, uc->pack.buffer);
@@ -318,33 +318,33 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 			return 5;
 		}
 		// more data
-		// Èç¹û¶ÁÍêºó£¬»¹ÓĞÊ£ÓàÊı¾İ
-		// ÏÈ¶ÁÈëÒ»¸ö°ü
+		// å¦‚æœè¯»å®Œåï¼Œè¿˜æœ‰å‰©ä½™æ•°æ®
+		// å…ˆè¯»å…¥ä¸€ä¸ªåŒ…
 		push_data(L, fd, uc->pack.buffer, uc->pack.size, 0);
 		skynet_free(uc);
-		// ÔÙ¶ÁÈëÊ£ÓàÊı¾İ
+		// å†è¯»å…¥å‰©ä½™æ•°æ®
 		push_more(L, fd, buffer, size);
-		// Ñ¹ÈëÉÏÖµ "more"
-		// ·µ»Ø queue, more Õâ2¸ö²ÎÊı
-		// dispatch_queue() ¼û lualib/snax/gateserver.lua
+		// å‹å…¥ä¸Šå€¼ "more"
+		// è¿”å› queue, more è¿™2ä¸ªå‚æ•°
+		// dispatch_queue() è§ lualib/snax/gateserver.lua
 		lua_pushvalue(L, lua_upvalueindex(TYPE_MORE));
 		return 2;
 	} else {
-		// Èç¹ûÃ»ÓĞÎ´Íê³É
+		// å¦‚æœæ²¡æœ‰æœªå®Œæˆ
 		if (size == 1) {
-			// Ö»ÓĞÒ»×Ö½Ú°üÍ·£¬Í¬push_more
+			// åªæœ‰ä¸€å­—èŠ‚åŒ…å¤´ï¼ŒåŒpush_more
 			struct uncomplete * uc = save_uncomplete(L, fd);
 			uc->read = -1;
 			uc->header = *buffer;
 			return 1;
 		}
-		// ¼ÆËãÊı¾İ°ü³¤¶È
+		// è®¡ç®—æ•°æ®åŒ…é•¿åº¦
 		int pack_size = read_size(buffer);
 		buffer+=2;
 		size-=2;
 
 		if (size < pack_size) {
-			// Èç¹û°ü³¤¶È²»¹»£¬±£´æÎ´Íê³É½á¹¹±äÁ¿
+			// å¦‚æœåŒ…é•¿åº¦ä¸å¤Ÿï¼Œä¿å­˜æœªå®Œæˆç»“æ„å˜é‡
 			struct uncomplete * uc = save_uncomplete(L, fd);
 			uc->read = size;
 			uc->pack.size = pack_size;
@@ -354,12 +354,12 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 		}
 		if (size == pack_size) {
 			// just one package
-			// Ñ¹ÈëÉÏÖµ "data"
-			// Ñ¹ÈëÏûÏ¢ fd
-			// Ñ¹Èë»º³åÇøÊı¾İ msg
-			// Ñ¹Èë»º³åÇø´óĞ¡ sz
-			// ·µ»Ø queue, data, fd, msg, sz Õâ5¸ö²ÎÊı
-			// dispatch_msg(fd, msg, sz) ¼û lualib/snax/gateserver.lua
+			// å‹å…¥ä¸Šå€¼ "data"
+			// å‹å…¥æ¶ˆæ¯ fd
+			// å‹å…¥ç¼“å†²åŒºæ•°æ® msg
+			// å‹å…¥ç¼“å†²åŒºå¤§å° sz
+			// è¿”å› queue, data, fd, msg, sz è¿™5ä¸ªå‚æ•°
+			// dispatch_msg(fd, msg, sz) è§ lualib/snax/gateserver.lua
 			lua_pushvalue(L, lua_upvalueindex(TYPE_DATA));
 			lua_pushinteger(L, fd);
 			void * result = skynet_malloc(pack_size);
@@ -369,16 +369,16 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 			return 5;
 		}
 		// more data
-		// Èç¹û¶ÁÍêºó£¬»¹ÓĞÊ£ÓàÊı¾İ
-		// ÏÈ¶ÁÈëÒ»¸ö°ü
+		// å¦‚æœè¯»å®Œåï¼Œè¿˜æœ‰å‰©ä½™æ•°æ®
+		// å…ˆè¯»å…¥ä¸€ä¸ªåŒ…
 		push_data(L, fd, buffer, pack_size, 1);
 		buffer += pack_size;
 		size -= pack_size;
-		// ÔÙ¶ÁÈëÊ£ÓàÊı¾İ
+		// å†è¯»å…¥å‰©ä½™æ•°æ®
 		push_more(L, fd, buffer, size);
-		// Ñ¹ÈëÉÏÖµ "more"
-		// ·µ»Ø queue, more Õâ2¸ö²ÎÊı
-		// dispatch_queue() ¼û lualib/snax/gateserver.lua
+		// å‹å…¥ä¸Šå€¼ "more"
+		// è¿”å› queue, more è¿™2ä¸ªå‚æ•°
+		// dispatch_queue() è§ lualib/snax/gateserver.lua
 		lua_pushvalue(L, lua_upvalueindex(TYPE_MORE));
 		return 2;
 	}
@@ -416,23 +416,23 @@ pushstring(lua_State *L, const char * msg, int size) {
  // return queue, type, fd, msg, sz
 static int
 lfilter(lua_State *L) {
-	// »ñÈ¡µÚ¶ş¸ö²ÎÊıÖµ£¬skynet_socket_message
+	// è·å–ç¬¬äºŒä¸ªå‚æ•°å€¼ï¼Œskynet_socket_message
 	struct skynet_socket_message *message = lua_touserdata(L,2);
-	// »ñÈ¡µÚÈı¸ö²ÎÊıÖµ£¬Êı¾İ³¤¶È
+	// è·å–ç¬¬ä¸‰ä¸ªå‚æ•°å€¼ï¼Œæ•°æ®é•¿åº¦
 	int size = luaL_checkinteger(L,3);
 	char * buffer = message->buffer;
-	// SOCKET_OPEN SOCKET_ACCEPT SOCKET_ERROR Ã»ÓĞ°ÑdataÊı¾İĞ´Èë»º³åÇø£¬¶øÊÇ·ÅÈëÖ®ºóµÄÄÚ´æ¿Õ¼ä
-	// ¾ßÌå¼û skynet_socket ÖĞµÄ forward_message ·½·¨
+	// SOCKET_OPEN SOCKET_ACCEPT SOCKET_ERROR æ²¡æœ‰æŠŠdataæ•°æ®å†™å…¥ç¼“å†²åŒºï¼Œè€Œæ˜¯æ”¾å…¥ä¹‹åçš„å†…å­˜ç©ºé—´
+	// å…·ä½“è§ skynet_socket ä¸­çš„ forward_message æ–¹æ³•
 	if (buffer == NULL) {
-		// Èç¹ûÊÇÌî³äÊı¾İ
+		// å¦‚æœæ˜¯å¡«å……æ•°æ®
 		buffer = (char *)(message+1);
 		size -= sizeof(*message);
 	} else {
 		size = -1;
 	}
 
-	// ÉèÖÃÕ»¶¥Îª1
-	// ±£ÁôÁËµÚÒ»¸ö²ÎÊıqueue£¬Çå¿ÕÁËÆäËûÁ½¸ö²ÎÊı
+	// è®¾ç½®æ ˆé¡¶ä¸º1
+	// ä¿ç•™äº†ç¬¬ä¸€ä¸ªå‚æ•°queueï¼Œæ¸…ç©ºäº†å…¶ä»–ä¸¤ä¸ªå‚æ•°
 	lua_settop(L, 1);
 
 	switch(message->type) {
@@ -446,19 +446,19 @@ lfilter(lua_State *L) {
 	case SKYNET_SOCKET_TYPE_CLOSE:
 		// no more data in fd (message->id)
 		close_uncomplete(L, message->id);
-		// Ñ¹ÈëÉÏÖµ "close"
-		// Ñ¹ÈëÏûÏ¢ fd
-		// ·µ»Ø queue, close, fd Õâ3¸ö²ÎÊı
-		// MSG.close(fd) ¼û lualib/snax/gateserver.lua
+		// å‹å…¥ä¸Šå€¼ "close"
+		// å‹å…¥æ¶ˆæ¯ fd
+		// è¿”å› queue, close, fd è¿™3ä¸ªå‚æ•°
+		// MSG.close(fd) è§ lualib/snax/gateserver.lua
 		lua_pushvalue(L, lua_upvalueindex(TYPE_CLOSE));
 		lua_pushinteger(L, message->id);
 		return 3;
 	case SKYNET_SOCKET_TYPE_ACCEPT:
-		// Ñ¹ÈëÉÏÖµ "open"
-		// Ñ¹ÈëÏûÏ¢ fd
-		// Ñ¹ÈëÊı¾İ buffer
-		// ·µ»Ø queue, open, fd, msg Õâ4¸ö²ÎÊı
-		// MSG.open(fd, msg) ¼û lualib/snax/gateserver.lua
+		// å‹å…¥ä¸Šå€¼ "open"
+		// å‹å…¥æ¶ˆæ¯ fd
+		// å‹å…¥æ•°æ® buffer
+		// è¿”å› queue, open, fd, msg è¿™4ä¸ªå‚æ•°
+		// MSG.open(fd, msg) è§ lualib/snax/gateserver.lua
 		lua_pushvalue(L, lua_upvalueindex(TYPE_OPEN));
 		// ignore listen id (message->id);
 		lua_pushinteger(L, message->ud);
@@ -466,22 +466,22 @@ lfilter(lua_State *L) {
 		return 4;
 	case SKYNET_SOCKET_TYPE_ERROR:
 		// no more data in fd (message->id)
-		// Ñ¹ÈëÉÏÖµ "error"
-		// Ñ¹ÈëÏûÏ¢ fd
-		// Ñ¹ÈëÊı¾İ buffer
-		// ·µ»Ø queue, error, fd, msg Õâ4¸ö²ÎÊı
-		// MSG.error(fd, msg) ¼û lualib/snax/gateserver.lua
+		// å‹å…¥ä¸Šå€¼ "error"
+		// å‹å…¥æ¶ˆæ¯ fd
+		// å‹å…¥æ•°æ® buffer
+		// è¿”å› queue, error, fd, msg è¿™4ä¸ªå‚æ•°
+		// MSG.error(fd, msg) è§ lualib/snax/gateserver.lua
 		close_uncomplete(L, message->id);
 		lua_pushvalue(L, lua_upvalueindex(TYPE_ERROR));
 		lua_pushinteger(L, message->id);
 		pushstring(L, buffer, size);
 		return 4;
 	case SKYNET_SOCKET_TYPE_WARNING:
-		// Ñ¹ÈëÉÏÖµ "warning"
-		// Ñ¹ÈëÏûÏ¢ fd
-		// Ñ¹Èë³¤¶È sz
-		// ·µ»Ø queue, error, fd, sz Õâ4¸ö²ÎÊı
-		// MSG.error(fd, sz) ¼û lualib/snax/gateserver.lua
+		// å‹å…¥ä¸Šå€¼ "warning"
+		// å‹å…¥æ¶ˆæ¯ fd
+		// å‹å…¥é•¿åº¦ sz
+		// è¿”å› queue, error, fd, sz è¿™4ä¸ªå‚æ•°
+		// MSG.error(fd, sz) è§ lualib/snax/gateserver.lua
 		lua_pushvalue(L, lua_upvalueindex(TYPE_WARNING));
 		lua_pushinteger(L, message->id);
 		lua_pushinteger(L, message->ud);
@@ -502,18 +502,18 @@ lfilter(lua_State *L) {
  // netpack.pop(queue)
 static int
 lpop(lua_State *L) {
-	// »ñÈ¡µÚÒ»¸ö²ÎÊıÖµ£¬queue
+	// è·å–ç¬¬ä¸€ä¸ªå‚æ•°å€¼ï¼Œqueue
 	struct queue * q = lua_touserdata(L, 1);
 	if (q == NULL || q->head == q->tail)
-		// Èç¹û¶ÓÁĞÎª¿Õ»òÕßÒÑÂú£¬·µ»Ø0
+		// å¦‚æœé˜Ÿåˆ—ä¸ºç©ºæˆ–è€…å·²æ»¡ï¼Œè¿”å›0
 		return 0;
-	// »ñÈ¡¶ÓÁĞÍ·Ë÷ÒıÏûÏ¢°ü
+	// è·å–é˜Ÿåˆ—å¤´ç´¢å¼•æ¶ˆæ¯åŒ…
 	struct netpack *np = &q->queue[q->head];
 	if (++q->head >= q->cap) {
-		// »ØÈÆ
+		// å›ç»•
 		q->head = 0;
 	}
-	// °ÑÏûÏ¢°üµÄÊôĞÔÖµÑ¹Õ»×÷Îªlua·µ»ØÖµ
+	// æŠŠæ¶ˆæ¯åŒ…çš„å±æ€§å€¼å‹æ ˆä½œä¸ºluaè¿”å›å€¼
 	lua_pushinteger(L, np->id);
 	lua_pushlightuserdata(L, np->buffer);
 	lua_pushinteger(L, np->size);
@@ -541,7 +541,7 @@ tolstring(lua_State *L, size_t *sz, int index) {
 	return ptr;
 }
 
-// lenĞ´Èë2×Ö½ÚÍ·
+// lenå†™å…¥2å­—èŠ‚å¤´
 static inline void
 write_size(uint8_t * buffer, int len) {
 	buffer[0] = (len >> 8) & 0xff;
@@ -549,26 +549,26 @@ write_size(uint8_t * buffer, int len) {
 }
 
 // netpack.pack
-// ÏûÏ¢´ò°ü£¬¼ÓÉÏ2×Ö½ÚµÄÏûÏ¢Í·
-// ·µ»Ømsg, sz
+// æ¶ˆæ¯æ‰“åŒ…ï¼ŒåŠ ä¸Š2å­—èŠ‚çš„æ¶ˆæ¯å¤´
+// è¿”å›msg, sz
 static int
 lpack(lua_State *L) {
 	size_t len;
 	const char * ptr = tolstring(L, &len, 1);
 	if (len >= 0x10000) {
-		// ÏûÏ¢³¤¶È²»³¬¹ı64K
-		// Ô¼¶¨ÁËÃ¿¸öÏûÏ¢°ü¶¼ÊÇ2×Ö½ÚÍ·
+		// æ¶ˆæ¯é•¿åº¦ä¸è¶…è¿‡64K
+		// çº¦å®šäº†æ¯ä¸ªæ¶ˆæ¯åŒ…éƒ½æ˜¯2å­—èŠ‚å¤´
 		return luaL_error(L, "Invalid size (too long) of data : %d", (int)len);
 	}
 
-	// ·ÖÅäÄÚ´æ´´½¨»º³åÇø
+	// åˆ†é…å†…å­˜åˆ›å»ºç¼“å†²åŒº
 	uint8_t * buffer = skynet_malloc(len + 2);
-	// ³¤¶ÈĞ´Èë»º³åÇøÍ·²¿
+	// é•¿åº¦å†™å…¥ç¼“å†²åŒºå¤´éƒ¨
 	write_size(buffer, len);
-	// Êı¾İĞ´Èë»º³åÇøÎ²²¿
+	// æ•°æ®å†™å…¥ç¼“å†²åŒºå°¾éƒ¨
 	memcpy(buffer+2, ptr, len);
 
-	// °Ñ»º³åÇøÊı¾İºÍ³¤¶ÈÑ¹ÈëÕ»ÖĞ×÷Îªlua·µ»ØÖµ
+	// æŠŠç¼“å†²åŒºæ•°æ®å’Œé•¿åº¦å‹å…¥æ ˆä¸­ä½œä¸ºluaè¿”å›å€¼
 	lua_pushlightuserdata(L, buffer);
 	lua_pushinteger(L, len + 2);
 
@@ -600,11 +600,11 @@ luaopen_netpack(lua_State *L) {
 		{ "tostring", ltostring },
 		{ NULL, NULL },
 	};
-	// ´´½¨Ò»ÕÅĞÂµÄ±í£¬²¢°ÑÁĞ±í l ÖĞµÄº¯Êı×¢²á½øÈ¥
+	// åˆ›å»ºä¸€å¼ æ–°çš„è¡¨ï¼Œå¹¶æŠŠåˆ—è¡¨ l ä¸­çš„å‡½æ•°æ³¨å†Œè¿›å»
 	luaL_newlib(L,l);
 
 	// the order is same with macros : TYPE_* (defined top)
-	// °´×Ô¶¨ÒåÀàĞÍºêµÄË³Ğò°ÑÒ»Ğ©×ÖÃæÁ¿Ñ¹ÈëÕ»ÖĞ
+	// æŒ‰è‡ªå®šä¹‰ç±»å‹å®çš„é¡ºåºæŠŠä¸€äº›å­—é¢é‡å‹å…¥æ ˆä¸­
 	lua_pushliteral(L, "data");
 	lua_pushliteral(L, "more");
 	lua_pushliteral(L, "error");
@@ -612,12 +612,12 @@ luaopen_netpack(lua_State *L) {
 	lua_pushliteral(L, "close");
 	lua_pushliteral(L, "warning");
 
-	// °ÑÒ»¸öĞÂµÄ C ±Õ°üÑ¹Õ»
+	// æŠŠä¸€ä¸ªæ–°çš„ C é—­åŒ…å‹æ ˆ
 	// fn = lfilter
 	// n = 6
-	// °ÑÑ¹ÈëÕ»µÄ6¸ö×ÖÃæÁ¿×÷Îª±Õ°üº¯ÊılfilterµÄ±Õ°üÉÏÖµ£¬Í¬Ê±´ÓÕ»ÖĞµ¯³ö
+	// æŠŠå‹å…¥æ ˆçš„6ä¸ªå­—é¢é‡ä½œä¸ºé—­åŒ…å‡½æ•°lfilterçš„é—­åŒ…ä¸Šå€¼ï¼ŒåŒæ—¶ä»æ ˆä¸­å¼¹å‡º
 	lua_pushcclosure(L, lfilter, 6);
-	// °ÑÕ»¶¥±Õ°üº¯ÊılfilterÉèÖÃÎªnewlibtableµÄfilter¶ÔÓ¦Öµ
+	// æŠŠæ ˆé¡¶é—­åŒ…å‡½æ•°lfilterè®¾ç½®ä¸ºnewlibtableçš„filterå¯¹åº”å€¼
 	lua_setfield(L, -2, "filter");
 
 	return 1;

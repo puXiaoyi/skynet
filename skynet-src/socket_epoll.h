@@ -15,24 +15,24 @@ sp_invalid(int efd) {
 	return efd == -1;
 }
 
-// ´´½¨Ò»¸öepollÊµÀı£¬·µ»ØÎÄ¼şÃèÊö·û
+// åˆ›å»ºä¸€ä¸ªepollå®ä¾‹ï¼Œè¿”å›æ–‡ä»¶æè¿°ç¬¦
 static int
 sp_create() {
 	return epoll_create(1024);
 }
 
-// ¹Ø±ÕepollÎÄ¼şÃèÊö·û
+// å…³é—­epollæ–‡ä»¶æè¿°ç¬¦
 static void
 sp_release(int efd) {
 	close(efd);
 }
 
-// °Ñsock¼ÓÈëefdÊÂ¼şÑ­»·¹ÜÀí
-// Ä¬ÈÏ¿ªÆô EPOLLIN ¿É¶ÁÈ¨ÏŞ
-// EPOLLIN£¬Ö»ÓĞµ±¶Ô¶ËÓĞÊı¾İĞ´ÈëÊ±²Å»á´¥·¢£¬´¥·¢Ò»´ÎºóĞèÒª²»¶Ï¶ÁÈ¡ËùÓĞÊı¾İÖ±µ½¶ÁÍêEAGAINÎªÖ¹£¬·ñÔòÊ£ÓàµÄÊı¾İÖ»ÓĞÔÚÏÂ´Î¶Ô¶ËÓĞÊı¾İĞ´ÈëÊ±²ÅÄÜ¶Áµ½¡£
-// EPOLLOUT£¬Ö»ÓĞÔÚÁ¬½ÓÊ±´¥·¢Ò»´Î±íÊ¾¿ÉĞ´¡£ÆäËûÊ±ºòÏë´¥·¢£¬±ØĞëÂú×ãÒÔÏÂÁ½¸öÌõ¼ş:writeĞ´Âú»º³åÇø·µ»ØEAGAIN£¬¶Ô¶Ë¶ÁÈ¡Êı¾İºóÓÖ¿ÉĞ´ÁË
-// EPOLLIN£¬ÒªÇó¶ÁÍêËùÓĞÊı¾İ£¬ËùÒÔÒªÇósocketÊÇÒì²½
-// EPOLLOUT£¬Ö»»áÔÚÄÚºË»º³åÇø²»¿ÉĞ´µ½¿ÉĞ´µÄ×ª±äÊ±¿Ì£¬²Å»á´¥·¢Ò»´Î£¬ËùÒÔ½Ğ±ßÔµ´¥·¢
+// æŠŠsockåŠ å…¥efdäº‹ä»¶å¾ªç¯ç®¡ç†
+// é»˜è®¤å¼€å¯ EPOLLIN å¯è¯»æƒé™
+// EPOLLINï¼Œåªæœ‰å½“å¯¹ç«¯æœ‰æ•°æ®å†™å…¥æ—¶æ‰ä¼šè§¦å‘ï¼Œè§¦å‘ä¸€æ¬¡åéœ€è¦ä¸æ–­è¯»å–æ‰€æœ‰æ•°æ®ç›´åˆ°è¯»å®ŒEAGAINä¸ºæ­¢ï¼Œå¦åˆ™å‰©ä½™çš„æ•°æ®åªæœ‰åœ¨ä¸‹æ¬¡å¯¹ç«¯æœ‰æ•°æ®å†™å…¥æ—¶æ‰èƒ½è¯»åˆ°ã€‚
+// EPOLLOUTï¼Œåªæœ‰åœ¨è¿æ¥æ—¶è§¦å‘ä¸€æ¬¡è¡¨ç¤ºå¯å†™ã€‚å…¶ä»–æ—¶å€™æƒ³è§¦å‘ï¼Œå¿…é¡»æ»¡è¶³ä»¥ä¸‹ä¸¤ä¸ªæ¡ä»¶:writeå†™æ»¡ç¼“å†²åŒºè¿”å›EAGAINï¼Œå¯¹ç«¯è¯»å–æ•°æ®ååˆå¯å†™äº†
+// EPOLLINï¼Œè¦æ±‚è¯»å®Œæ‰€æœ‰æ•°æ®ï¼Œæ‰€ä»¥è¦æ±‚socketæ˜¯å¼‚æ­¥
+// EPOLLOUTï¼Œåªä¼šåœ¨å†…æ ¸ç¼“å†²åŒºä¸å¯å†™åˆ°å¯å†™çš„è½¬å˜æ—¶åˆ»ï¼Œæ‰ä¼šè§¦å‘ä¸€æ¬¡ï¼Œæ‰€ä»¥å«è¾¹ç¼˜è§¦å‘
 static int 
 sp_add(int efd, int sock, void *ud) {
 	struct epoll_event ev;
@@ -44,13 +44,13 @@ sp_add(int efd, int sock, void *ud) {
 	return 0;
 }
 
-// °ÑsockÒÆ³öefdÊÂ¼şÑ­»·¹ÜÀí
+// æŠŠsockç§»å‡ºefdäº‹ä»¶å¾ªç¯ç®¡ç†
 static void 
 sp_del(int efd, int sock) {
 	epoll_ctl(efd, EPOLL_CTL_DEL, sock , NULL);
 }
 
-// ĞŞ¸ÄsockÔÚefdÖĞµÄÈ¨ÏŞ
+// ä¿®æ”¹sockåœ¨efdä¸­çš„æƒé™
 static void 
 sp_write(int efd, int sock, void *ud, bool enable) {
 	struct epoll_event ev;
@@ -59,7 +59,7 @@ sp_write(int efd, int sock, void *ud, bool enable) {
 	epoll_ctl(efd, EPOLL_CTL_MOD, sock, &ev);
 }
 
-// µÈ´ı¾ÍĞ÷µÄÊÂ¼şÁĞ±í
+// ç­‰å¾…å°±ç»ªçš„äº‹ä»¶åˆ—è¡¨
 static int 
 sp_wait(int efd, struct event *e, int max) {
 	struct epoll_event ev[max];
@@ -75,7 +75,7 @@ sp_wait(int efd, struct event *e, int max) {
 	return n;
 }
 
-// ÉèÖÃfdÎª·Ç×èÈûÎÄ¼şÃèÊö·û
+// è®¾ç½®fdä¸ºéé˜»å¡æ–‡ä»¶æè¿°ç¬¦
 static void
 sp_nonblocking(int fd) {
 	int flag = fcntl(fd, F_GETFL, 0);
