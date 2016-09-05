@@ -632,7 +632,7 @@ lnextkey(lua_State *L) {
 	struct node *n = lookup_key(tbl, keyhash, key, keytype, str, sz);
 	if (n) {
 		++n;
-		int index = n->tbl->hash;
+		int index = n-tbl->hash;
 		if (index == tbl->sizehash) {
 			return 0;
 		}
