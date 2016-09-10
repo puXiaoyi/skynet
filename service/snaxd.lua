@@ -14,9 +14,11 @@ SERVICE_PATH = snax_path
 
 local profile_table = {}
 
+-- 更新统计
 local function update_stat(name, ti)
 	local t = profile_table[name]
 	if t == nil then
+		-- 记录次数和时间
 		t = { count = 0,  time = 0 }
 		profile_table[name] = t
 	end
@@ -27,9 +29,11 @@ end
 local traceback = debug.traceback
 
 local function return_f(f, ...)
+	-- if response, must use skynet.ret for skynet.call
 	return skynet.ret(skynet.pack(f(...)))
 end
 
+-- 执行RPC调用，并进行统计
 local function timing( method, ... )
 	local err, msg
 	profile.start()
@@ -39,6 +43,7 @@ local function timing( method, ... )
 	else
 		err,msg = xpcall(return_f, traceback, method[4], ...)
 	end
+	-- profile模块统计snax服务RPC调用时间
 	local ti = profile.stop()
 	update_stat(method[3], ti)
 	assert(err,msg)
@@ -47,9 +52,11 @@ end
 skynet.start(function()
 	local init = false
 	local function dispatcher( session , source , id, ...)
+		-- id, group, name, function
 		local method = func[id]
 
 		if method[2] == "system" then
+			-- hotfix/init/exit
 			local command = method[3]
 			if command == "hotfix" then
 				local hotfix = require "snax.hotfix"
@@ -73,6 +80,7 @@ skynet.start(function()
 				skynet.exit()
 			end
 		else
+			-- accept/response
 			assert(init, "Init first")
 			timing(method, ...)
 		end

@@ -77,6 +77,7 @@ function cmd.LAUNCH(service_name, subname, ...)
 	local realname = read_name(service_name)
 
 	if realname == "snaxd" then
+		-- snax.lua, snax.uniqueservice
 		return waitfor(service_name.."."..subname, snax.rawnewservice, subname, ...)
 	else
 		return waitfor(service_name, skynet.newservice, realname, subname, ...)
