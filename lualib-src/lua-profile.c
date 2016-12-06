@@ -53,24 +53,25 @@ diff_time(double start) {
 // 性能跟踪开始
 static int
 lstart(lua_State *L) {
-	// 默认当前主线程，也可以传参
-	if (lua_type(L,1) == LUA_TTHREAD) {
+	if (lua_gettop(L) != 0) {
 		lua_settop(L,1);
+		luaL_checktype(L, 1, LUA_TTHREAD);
 	} else {
 		lua_pushthread(L);
 	}
+	lua_pushvalue(L, 1);	// push coroutine
 	// 把第二个上值表中total time值压栈
 	lua_rawget(L, lua_upvalueindex(2));
 	if (!lua_isnil(L, -1)) {
 		return luaL_error(L, "Thread %p start profile more than once", lua_topointer(L, 1));
 	}
+	lua_pushvalue(L, 1);	// push coroutine
 	// 设置第二个上值total time为0
-	lua_pushthread(L);
 	lua_pushnumber(L, 0);
 	lua_rawset(L, lua_upvalueindex(2));
-
-	// 设置第一个上值start time为当前时间 
-	lua_pushthread(L);
+ 
+	lua_pushvalue(L, 1);	// push coroutine
+	// 设置第一个上值start time为当前时间
 	double ti = get_time();
 #ifdef DEBUG_LOG
 	fprintf(stderr, "PROFILE [%p] start\n", L);
@@ -85,13 +86,14 @@ lstart(lua_State *L) {
 // 性能跟踪结束
 static int
 lstop(lua_State *L) {
-	// 默认当前主线程，也可以传参
-	if (lua_type(L,1) == LUA_TTHREAD) {
+	if (lua_gettop(L) != 0) {
 		lua_settop(L,1);
+		luaL_checktype(L, 1, LUA_TTHREAD);
 	} else {
 		lua_pushthread(L);
 	}
 	// 把第一个上值表中start time值压栈
+	lua_pushvalue(L, 1);	// push coroutine
 	lua_rawget(L, lua_upvalueindex(1));
 	if (lua_type(L, -1) != LUA_TNUMBER) {
 		// 必须在stop之前执行start
@@ -100,18 +102,18 @@ lstop(lua_State *L) {
 	// 计算start time 与当前时间的差值
 	double ti = diff_time(lua_tonumber(L, -1));
 	// 把第二个上值表中total time值压栈
-	lua_pushthread(L);
+	lua_pushvalue(L, 1);	// push coroutine
 	lua_rawget(L, lua_upvalueindex(2));
 	// 获取total time
 	double total_time = lua_tonumber(L, -1);
 
 	// 设置第一个上值为nil
-	lua_pushthread(L);
+	lua_pushvalue(L, 1);	// push coroutine
 	lua_pushnil(L);
 	lua_rawset(L, lua_upvalueindex(1));
 
 	// 设置第二个上值为nil
-	lua_pushthread(L);
+	lua_pushvalue(L, 1);	// push coroutine
 	lua_pushnil(L);
 	lua_rawset(L, lua_upvalueindex(2));
 

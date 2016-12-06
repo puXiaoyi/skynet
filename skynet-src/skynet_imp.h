@@ -4,6 +4,7 @@
 struct skynet_config {
 	int thread;					// 工作线程数
 	int harbor;					// harbor开启标识
+	int profile;				// 
 	const char * daemon;		// 后台运行标识
 	const char * module_path; 	// c module地址
 	const char * bootstrap;		// 启动服务配置，如 snlua bootstrap

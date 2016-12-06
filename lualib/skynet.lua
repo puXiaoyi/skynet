@@ -199,6 +199,12 @@ function suspend(co, result, command, param, size)
 	elseif command == "RETURN" then
 		-- skynet.ret中coroutine_yield("RETURN", msg, sz)挂起协程，注册session_id_coroutine和session_coroutine_address以及session_response标识，发送回应消息给对方服务
 		local co_session = session_coroutine_id[co]
+		if co_session == 0 then
+			if size ~= nil then
+				c.trash(param, size)
+			end
+			return suspend(co, coroutine_resume(co, false))	-- send don't need ret
+		end
 		local co_address = session_coroutine_address[co]
 		if param == nil or session_response[co] then
 			error(debug.traceback(co))
@@ -595,6 +601,8 @@ local function raw_dispatch_message(prototype, msg, sz, session, source)
 			-- 运行协程，把session, source, p.unpack(msg,sz)作为参数传入消息分发函数
 			-- 运行dispatch，如果遇到skynet.ret/skynet.response，挂起协程，suspend接受参数继续执行RETURN/RESPONSE逻辑
 			suspend(co, coroutine_resume(co, session,source, p.unpack(msg,sz)))
+		elseif session ~= 0 then
+			c.send(source, skynet.PTYPE_ERROR, session, "")
 		else
 			unknown_request(session, source, msg, sz, proto[prototype].name)
 		end
@@ -760,12 +768,16 @@ end
 
 -- 返回服务是否无限循环
 function skynet.endless()
-	return c.command("ENDLESS")~=nil
+	return (c.intcommand("STAT", "endless") == 1)
 end
 
 -- 返回当前服务消息数量
 function skynet.mqlen()
-	return c.intcommand "MQLEN"
+	return c.intcommand("STAT", "mqlen")
+end
+
+function skynet.stat(what)
+	return c.intcommand("STAT", what)
 end
 
 function skynet.task(ret)

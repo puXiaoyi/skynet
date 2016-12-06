@@ -30,7 +30,6 @@ optint(const char *key, int opt) {
 	return strtol(str, NULL, 10);
 }
 
-/*
 static int
 optboolean(const char *key, int opt) {
 	const char * str = skynet_getenv(key);
@@ -40,7 +39,6 @@ optboolean(const char *key, int opt) {
 	}
 	return strcmp(str,"true")==0;
 }
-*/
 
 // 获取环境变量字符串
 static const char *
@@ -163,6 +161,7 @@ main(int argc, char *argv[]) {
 	config.daemon = optstring("daemon", NULL);
 	config.logger = optstring("logger", NULL);
 	config.logservice = optstring("logservice", "logger");
+	config.profile = optboolean("profile", 1);
 
 	lua_close(L);
 

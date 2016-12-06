@@ -30,6 +30,7 @@ return function (name , G, loader)
 	end
 
 	do
+		-- 保留函数
 		assert(getmetatable(G) == nil)
 		assert(G.init == nil)
 		assert(G.exit == nil)
@@ -61,10 +62,11 @@ return function (name , G, loader)
 		end
 	end
 
+	-- 两个闭包
 	env.accept = func_id(func, "accept")
 	env.response = func_id(func, "response")
 
-	local function init_system(t, name, f)
+	local function init_system(t, name, f) 
 		local index = system[name]
 		if index then
 			if type(f) ~= "function" then
@@ -72,6 +74,7 @@ return function (name , G, loader)
 			end
 			func[index][4] = f
 		else
+			-- 保存除init、exit和hotfix之外的全局变量
 			temp_global[name] = f
 		end
 	end

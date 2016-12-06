@@ -295,6 +295,7 @@ skynet_start(struct skynet_config * config) {
 	skynet_timer_init();
 	// 初始化skynet_socket
 	skynet_socket_init();
+	skynet_profile_enable(config->profile);
 
 	// 启动log服务
 	struct skynet_context *ctx = skynet_context_new(config->logservice, config->logger);
