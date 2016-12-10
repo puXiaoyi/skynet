@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include "skynet.h"
 #include "lua-seri.h"
 
@@ -887,4 +886,3 @@ luaopen_skynet_core(lua_State *L) {
 
 	return 1;
 }
->>>>>>> 7ee9cdb29be686973b72dc0a56f5c92eac902590
